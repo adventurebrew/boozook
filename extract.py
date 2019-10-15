@@ -58,7 +58,7 @@ def unpack_chunk(stream, size):
                 if not size:
                     return res
 
-                tmp_buf[tmp_ind] = tmp_buf[(off + i) % 4096];
+                tmp_buf[tmp_ind] = tmp_buf[(off + i) % 4096]
                 tmp_ind += 1
                 tmp_ind %= 4096
     return res
