@@ -1,7 +1,6 @@
 import sys
 import glob
 import os
-import numpy as np
 import glob
 
 def read_uin16le(f):

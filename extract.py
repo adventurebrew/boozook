@@ -86,7 +86,9 @@ if __name__ == '__main__':
             assert stk_file.tell() == offset
             stk_file.seek(offset, 0)
             print([x for x in file_name])
-            with open(f'OUT/{file_name}', 'wb') as out:
+            basedir = os.path.join('out', os.path.basename(fname))
+            os.makedirs(basedir, exist_ok=True)
+            with open(os.path.join(basedir, file_name), 'wb') as out:
                 data = stk_file.read(size)
                 # assert not compression, compression
                 out.write(unpack(data, compression))
