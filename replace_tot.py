@@ -5,8 +5,10 @@ import os
 import glob
 import struct
 import operator
+import base64
 
 from read_tot import read_tot, read_uin16le, fix_value
+from extract import replace_many
 
 def reads_uin16le(stream):
     return int.from_bytes(stream.read(2), byteorder='little', signed=False)
@@ -28,9 +30,6 @@ def parse_text(text):
         if c in (2, 5):
             skip = 4
             yield ord(b'\n')
-            continue
-        if c == 3:
-            skip = 1
             continue
         if c == 3 or c == 4:
             skip = 1
@@ -61,6 +60,52 @@ def parse_text(text):
             raise NotImplementedError('Oy')
         yield c
 
+def escape(seq):
+    return b''.join(f'\\x{v:02x}'.encode() for v in seq)
+
+def escape_bytes(data):
+    with io.BytesIO(data) as stream:
+        while False:
+            r = stream.read(1)
+            if not r:
+                break
+            c = r[0]
+            if c == 1:
+                rest = stream.read(2)
+                print(len(rest), stream.tell(), stream.tell() % 2)
+                # assert set(rest) == {0}, rest
+                # yield escape(bytes([c]) + rest)
+                break
+            if c in (2, 5):
+                col = escape(bytes([c]) + stream.read(4))
+                # values are {c}\x00\x00\x{i*10:02x}\x00 for i = line_number starting from 1
+                # count is shared in both (e.g can be \x02\..x0a then \x05\..x14)
+                yield b'\n' if c == 2 else b'\n~~~\n'
+                continue
+            if c in (3, 4):
+                yield escape(bytes([c]) + stream.read(1))
+                continue
+            if c == 6:
+                a = stream.read(1)[0]
+                skip = 0
+                if a & 0x80:
+                    skip += 2 
+                if a & 0x40:
+                    skip += 8 
+                yield escape(bytes([a, c]) + stream.read(skip))
+                continue
+            if c in (7, 8, 9):
+                yield escape(bytes([c]))
+                continue
+            if c == 10:
+                a = stream.read(1)[0]
+                yield escape(bytes([c, a]) + stream.read(2 * a))
+            if c >= 0x80:
+                yield bytes([c])
+                continue
+            if c == 186:
+                raise NotImplementedError('Oy')
+            yield bytes([c])
 
 def parse_text_data(data):
     with io.BytesIO(data) as stream:
@@ -78,19 +123,79 @@ def parse_text_data(data):
             line_data = stream.read(size)
             yield offset, size, line_data
 
+text_reps = [('"', '`'), ('\t', '|~t~|'), ('\r', '|~r~|')]
+bin_rep = [(chr(i), f'\\x{i:02x}') for i in range(10)]
+
 def extract_texts(out, basename, texts):
     for idx, (offset, size, line_data) in texts.items():
-        if line_data:
+        if len(line_data) > 18 and line_data[18] not in {0, ord(b'@'), 4}:
+            escaped = b''.join(escape_bytes(line_data[18:]))
+            # assert aaa == line_data[18:], (aaa, line_data[18:])
             # TODO read and replace line
-            out.write(basename + '\t"' + bytes(parse_text(line_data[18:])).decode('cp850').replace('"', '`').replace('\n', '|~$~|').replace('\t', '|~t~|').replace('\r', '|~r~|') + '"\n')
+            out.write(basename
+                + '\t"' + replace_many(escaped.decode('cp850'), *text_reps, *bin_rep) # , ('\n', '|~$~|'))
+                + '"\t"' + replace_many(bytes(parse_text(line_data[18:])).decode('cp850'), *text_reps)
+                + '"\n'
+            )
+
+def build_line_breaks(lines):
+    num = 10
+    while True:
+        two, cont2 = '', lines
+        five, cont5 = '', lines
+        if '|~$~|' in lines:
+            two, cont2 = lines.split('|~$~|', maxsplit=1)
+        if '|~~~|' in lines:
+            five, cont5 = lines.split('|~~~|', maxsplit=1)
+
+        if not two and not five:
+            yield lines
+            return
+
+        if two and (not five or len(two) < len(five)):
+            yield two + f'\\x02\\x00\\x00\\x{num:02x}\\x00'
+            lines = cont2
+        else:
+            yield five + f'\\x05\\x00\\x00\\x{num:02x}\\x00'
+            lines = cont5
+        num += 10
+        # two, cont2 = lines.split('|~~~|', maxsplit=1)
+        # print(lines + '\n\n')
+        # two = lines.find('|~$~|')
+        # five = lines.find('|~~~|')
+        # if two < 0 and five < 0:
+        #     print('DONE', lines)
+        #     yield lines
+        #     return
+        # print(two, five)
+        # if two < five or five < 0:
+        #     yield lines[:two] + f'\\x02\\x00\\x00\\x{num:02x}\\x00'
+        #     print('TWO', lines[:two])
+        #     lines = lines[two + 5:]
+        # else:
+        #     yield lines[:five] + f'\\x05\\x00\\x00\\x{num:02x}\\x00'
+        #     print('FIVE', lines[:five])
+        #     lines = lines[five + 5:]
+        # num += 10
+
 
 def replace_texts(lines, texts):
     for offset, size, line_data in texts.values():
-        if line_data:
-            fname, line = next(lines).split('\t')
+        if len(line_data) > 18 and line_data[18] not in {0, ord(b'@'), 4}:
+            fname, escaped = next(lines).split('\t')
             text = bytes(parse_text(line_data[18:]))
-            line_data = line_data[:18] + b'(sound of the Growth Formula)\x01\x00'
+            breaked = ''.join(build_line_breaks(escaped[:-1]))
+            encoded = b''.join(encode_seq(i, seq) for i, seq in enumerate(breaked.encode('windows-1255', errors='ignore').split(b'\\x')))
+            line_data = line_data[:18] + encoded + b'\x01\x00'
         yield offset, size, line_data
+
+def encode_seq(i, seq):
+    if not i:
+        return seq
+    try:
+        return bytes([int(b'0x' + seq[:2], 16)]) + seq[2:]
+    except:
+        return seq
 
 def save_lang_file(out, text_data, texts):
     import pprint
@@ -126,8 +231,9 @@ if __name__ == '__main__':
 
     extract = False
     mode = 'w' if extract else 'r'
+    lines_file = 'output.txt' if extract else 'input.txt'
 
-    with open('output.txt', mode, encoding='utf-8') as out:
+    with open(lines_file, mode, encoding='utf-8') as out:
         for fname in filenames:
             texts_data = None
             with open(fname, 'rb') as tot_file:
