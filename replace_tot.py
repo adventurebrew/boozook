@@ -6,6 +6,7 @@ import glob
 import struct
 import operator
 import base64
+import binascii
 
 from read_tot import read_tot, read_uin16le, fix_value
 from extract import replace_many
@@ -65,7 +66,7 @@ def escape(seq):
 
 def escape_bytes(data):
     with io.BytesIO(data) as stream:
-        while False:
+        while True:
             r = stream.read(1)
             if not r:
                 break
@@ -133,6 +134,7 @@ def extract_texts(out, basename, texts):
             # assert aaa == line_data[18:], (aaa, line_data[18:])
             # TODO read and replace line
             out.write(basename
+                + '\t' + binascii.hexlify(line_data[:18]).decode()
                 + '\t"' + replace_many(escaped.decode('cp850'), *text_reps, *bin_rep) # , ('\n', '|~$~|'))
                 + '"\t"' + replace_many(bytes(parse_text(line_data[18:])).decode('cp850'), *text_reps)
                 + '"\n'
@@ -179,13 +181,20 @@ def build_line_breaks(lines):
         # num += 10
 
 
+bump_lets = zip(range(ord('א'), ord('ת') + 1), range(ord('@'), ord('Z') + 1))
+bump_lets = [(chr(c), chr(r)) for c, r in bump_lets]
+# print(bump_lets)
+# exit(1)
+
 def replace_texts(lines, texts):
     for offset, size, line_data in texts.values():
         if len(line_data) > 18 and line_data[18] not in {0, ord(b'@'), 4}:
             fname, escaped = next(lines).split('\t')
             text = bytes(parse_text(line_data[18:]))
             breaked = ''.join(build_line_breaks(escaped[:-1]))
-            encoded = b''.join(encode_seq(i, seq) for i, seq in enumerate(breaked.encode('windows-1255', errors='ignore').split(b'\\x')))
+            # breaked = replace_many(breaked, *bump_lets)
+            encoding = 'windows-1255'  # 'cp862
+            encoded = b''.join(encode_seq(i, seq) for i, seq in enumerate(breaked.encode(encoding, errors='ignore').split(b'\\x')))
             line_data = line_data[:18] + encoded + b'\x01\x00'
         yield offset, size, line_data
 
@@ -229,7 +238,7 @@ if __name__ == '__main__':
 
     filenames = sorted(glob.iglob(sys.argv[1]))
 
-    extract = False
+    extract = True
     mode = 'w' if extract else 'r'
     lines_file = 'output.txt' if extract else 'input.txt'
 
