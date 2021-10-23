@@ -2,6 +2,7 @@ import io
 import os
 import sys
 import glob
+import itertools
 
 from grid import convert_to_pil_image
 from read_tot import read_tot
@@ -27,7 +28,7 @@ def uncompress_sprite(data, width, height):
         buffer = [0 for _ in range(4370)]
         src_left = read_uint32le(stream.read(4))
 
-        buf_pos = 4078
+        buf_pos = 4096 - 18
         len_cmd = 100
         pos = 0
 
@@ -76,12 +77,31 @@ def uncompress_sprite(data, width, height):
         return im_buffer
 
 
-def unpack_sprite(data, width, height):
-    im_buffer = [0 for _ in range(width * height)]
 
-    pos = 0
+def pack_sprite(data):
+    groups = [(v, list(g)) for v, g in itertools.groupby(data)]
+    out = bytearray()
+    for v, group in groups:
+        while len(group) > 2048:
+            repeat = 2047
+            out += bytes([v << 4 | (repeat >> 8) & 7, repeat & 0xFF])
+            group = group[2048:]
+            # print('DEC', v, repeat + 1)
+        repeat = len(group) - 1
+        # print('DEC', v, repeat + 1)
+        assert v <= 0x0F, v
+        if repeat > 7:
+            out += bytes([v << 4 | (repeat >> 8) & 7, repeat & 0xFF])
+        else:
+            out += bytes([v << 4 | 8 | repeat])
+    return bytes(out)
+
+
+def unpack_sprite(data, width, height):
+
+    out = bytearray()
     with io.BytesIO(data) as stream:
-        while pos < width * height:
+        while len(out) < width * height:
             val = stream.read(1)[0]
             repeat = val & 7
             val &= 0xF8
@@ -90,12 +110,16 @@ def unpack_sprite(data, width, height):
                 repeat <<= 8
                 repeat %= 4096 * 4096
                 repeat |= stream.read(1)[0]
+                assert repeat > 7, repeat
+            else:
+                assert repeat <= 7, repeat
             repeat += 1
             val >>= 4
 
-            im_buffer[pos:pos+repeat] = [val for _ in range(repeat)]
-            pos += repeat
-        return im_buffer
+            # print('DEC', val, repeat)
+            out += bytes([val for _ in range(repeat)])
+        assert len(out) == width * height, (len(out), width, height)
+        return list(out)
 
 
 palette = [((53 + x) ** 2 * 13 // 5) % 256 for x in range(256 * 3)]
@@ -174,6 +198,11 @@ if __name__ == '__main__':
                 else:
                     print('UNPACK', basename, idx)
                     im = unpack_sprite(data, width, height)
+
+                    if im:
+                        enc = pack_sprite(im)
+                        assert enc == data, (enc, data)
+                        assert unpack_sprite(enc, width, height) == im
                 if width & height:
                     bim = convert_to_pil_image(im, size=(width, height))
                     bim.putpalette([(x << 2) % 256 for x in palette])
