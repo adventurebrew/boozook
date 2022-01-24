@@ -12,6 +12,38 @@ def read_uin32le(f):
 def fix_value(original, target, fix):
     return original if original != target else fix
 
+qwerty = {
+    't': 'א',
+    'c': 'ב',
+    'd': 'ג',
+    's': 'ד',
+    'v': 'ה',
+    'u': 'ו',
+    'z': 'ז',
+    'j': 'ח',
+    'y': 'ט',
+    'h': 'י',
+    'l': 'ך',
+    'f': 'כ',
+    'k': 'ל',
+    'o': 'ם',
+    'n': 'מ',
+    'i': 'ן',
+    'b': 'נ',
+    'x': 'ס',
+    'g': 'ע',
+    ';': 'ף',
+    'p': 'פ',
+    '.': 'ץ',
+    'm': 'צ',
+    'e': 'ק',
+    'r': 'ר',
+    'a': 'ש',
+    ',': 'ת',
+    '\'': ',',
+    '/': '.'
+}
+
 def read_tot(f):
     header = f.read(128)
     version = header[39:42].decode()
@@ -50,6 +82,7 @@ def read_tot(f):
     if resources_offset != 0:
         f.seek(resources_offset, 0)
         resources = f.read(resource_size)
+        assert f.read() == b''
 
     # print(texts, resources)
     return texts, resources
@@ -109,7 +142,7 @@ if __name__ == '__main__':
     lang_code = sys.argv[2]
 
     filenames = glob.iglob(sys.argv[1])
-    with open('output.txt', 'w', encoding='utf-8') as out:
+    with open('output_tttttot.txt', 'w', encoding='utf-8') as out:
         for fname in filenames:
             with open(fname, 'rb') as tot_file:
                 texts_data, res_data = read_tot(tot_file)
@@ -131,7 +164,9 @@ if __name__ == '__main__':
                 # print(index)
                 for offset, size in index:
                     line = texts_data[offset:offset+size]
-                    out.write(os.path.basename(fname) + '\t"' + bytes(parse_text(line[18:])).decode('cp850').replace('"', '`') + '"\n')
+                    lll = bytes(parse_text(line[18:]))
+                    lll = b''.join(qwerty.get(chr(x), chr(x)).encode('cp862') for x in lll)
+                    out.write(os.path.basename(fname) + '\t"' + lll.decode('cp862').replace('"', '`') + '"\n')
 
         # if res_data:
         #     print(res_data)

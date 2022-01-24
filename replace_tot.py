@@ -193,7 +193,7 @@ def replace_texts(lines, texts):
             text = bytes(parse_text(line_data[18:]))
             breaked = ''.join(build_line_breaks(escaped[:-1]))
             # breaked = replace_many(breaked, *bump_lets)
-            encoding = 'windows-1255'  # 'cp862
+            encoding = 'windows-1255'  # 'cp862'
             encoded = b''.join(encode_seq(i, seq) for i, seq in enumerate(breaked.encode(encoding, errors='ignore').split(b'\\x')))
             line_data = line_data[:18] + encoded + b'\x01\x00'
         yield offset, size, line_data
@@ -237,6 +237,7 @@ if __name__ == '__main__':
     lang_code = sys.argv[2]
 
     filenames = sorted(glob.iglob(sys.argv[1]))
+    print(filenames)
 
     extract = True
     mode = 'w' if extract else 'r'
@@ -256,7 +257,7 @@ if __name__ == '__main__':
 
             try:
                 if not texts_data:
-                    with open(f'{fname[:-4]}.{lang_code}', 'rb') as loc_file:
+                    with open(f'{fname[:-4]}.ANG', 'rb') as loc_file:
                         texts_data = loc_file.read()
                 # else:
                 #     raise ValueError('Oyy')

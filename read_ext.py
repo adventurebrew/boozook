@@ -19,6 +19,20 @@ def read_uint32le(f):
     return int.from_bytes(f[:4], byteorder='little', signed=False)
 
 
+def grouper(iterable, n, fillvalue=None):
+    "Collect data into non-overlapping fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
+    args = [iter(iterable)] * n
+    return itertools.zip_longest(*args, fillvalue=fillvalue)
+
+
+def compress_sprite(data):
+    out = bytearray()
+    out += b'\x01\x02\x01'
+    out += len(data).to_bytes(4, byteorder='little', signed=False)
+    out += b''.join(b'\xff' + seq for seq in grouper(data, 8))
+
+
 def uncompress_sprite(data, width, height):
     with io.BytesIO(data) as stream:
         codec = stream.read(1)[0]
@@ -36,43 +50,43 @@ def uncompress_sprite(data, width, height):
 
         im_buffer = [0 for _ in range(width * height)]
 
-        cmd_var = 0
+        cmd_vars = []
         while pos < width * height:
             assert src_left > 0
 
-            cmd_var >>= 1
-            if cmd_var & 0x100 == 0:
-                cmd_var = stream.read(1)[0] | 0xFF00
+            if not cmd_vars:
+                cmd_vars = list(int(x) for x in f'{stream.read(1)[0]:08b}')
+                # print(cmd_vars)
 
-            if cmd_var & 1 != 0:
-                temp = stream.read(1)[0]
-                im_buffer[pos] = temp
+            cmd_var = cmd_vars.pop()
+
+            print('CMD_VAR', cmd_var)
+            if cmd_var == 1:
+                # write next byte to buffer and image
+                im_buffer[pos] = buffer[buf_pos] = stream.read(1)[0]
                 pos += 1
-
-                buffer[buf_pos] = temp
                 buf_pos = (buf_pos + 1) % 4096
             else:
                 offset = stream.read(1)[0]
                 temp = stream.read(1)[0]
 
+                print('OFFSET', offset, 'TEMP', temp)
+
                 offset |= (temp & 0xF0) << 4
                 offset %= 4096
                 str_len = (temp & 0x0F) + 3
 
-                if str_len == len_cmd:
-                    str_len = stream.read(1)[0] + 18
-                
-                for counter2 in range(str_len):
-                    temp = buffer[(offset + counter2) % 4096]
-                    im_buffer[pos] = temp
-                    pos += 1
+                print('OFFSET', offset, 'STR_LEN', str_len)
 
-                    buffer[buf_pos] = temp
+                for counter in range(str_len):
+                    im_buffer[pos] = buffer[buf_pos] = buffer[(offset + counter) % 4096]
+                    pos += 1
                     buf_pos = (buf_pos + 1) % 4096
 
                 assert str_len < src_left, (str_len, src_left)
 
             src_left -= 1
+        assert (cmd_vars == [] or set(cmd_vars) == {0}) and len(cmd_vars) < 8, cmd_vars
         assert stream.read() == b''
         return im_buffer
 

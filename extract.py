@@ -16,7 +16,9 @@ def replace_many(s, *reps):
 def extract(f):
     file_count = read_uin16le(f)
     for i in range(file_count):
-        file_name = f.read(13).decode().split('\0')[0]
+        raw_fname = f.read(13)
+        print(raw_fname)
+        file_name = raw_fname.split(b'\0')[0].decode()
         size = read_uin32le(f)
         offset = read_uin32le(f)
         compression = f.read(1) != b'\00'
