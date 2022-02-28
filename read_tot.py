@@ -1,13 +1,17 @@
-import sys
-import glob
-import os
-import glob
+import io
+
 
 def read_uin16le(f):
     return int.from_bytes(f[:2], byteorder='little', signed=False)
 
 def read_uin32le(f):
     return int.from_bytes(f[:4], byteorder='little', signed=False)
+
+def reads_uin16le(stream):
+    return int.from_bytes(stream.read(2), byteorder='little', signed=False)
+
+def reads_uin32le(stream):
+    return int.from_bytes(stream.read(4), byteorder='little', signed=False)
 
 def fix_value(original, target, fix):
     return original if original != target else fix
@@ -133,54 +137,22 @@ def parse_text(text):
             raise NotImplementedError('Oy')
         yield c
 
-if __name__ == '__main__':
 
-    if not len(sys.argv) > 2:
-        print('Usage: read_tot.py FILENAME LANG_CODE')
-        exit(1)
-    filenames = sys.argv[1]
-    lang_code = sys.argv[2]
 
-    filenames = glob.iglob(sys.argv[1])
-    with open('output_tttttot.txt', 'w', encoding='utf-8') as out:
-        for fname in filenames:
-            with open(fname, 'rb') as tot_file:
-                texts_data, res_data = read_tot(tot_file)
 
-            try:
-                if not texts_data:
-                    with open(f'{fname[:-4]}.{lang_code}', 'rb') as loc_file:
-                        texts_data = loc_file.read()
-                # else:
-                #     raise ValueError('Oyy')
-            except:
-                pass
 
-            if texts_data:
-                items_count = read_uin16le(texts_data) & 0x3FFF
-                # print(items_count)
-                index = [[read_uin16le(texts_data[2 + i * 4:]), read_uin16le(texts_data[4 + i * 4:])] for i in range(items_count)]
-                index = [(offset, size) for offset, size in index if offset != 0xFFFF and size != 0]
-                # print(index)
-                for offset, size in index:
-                    line = texts_data[offset:offset+size]
-                    lll = bytes(parse_text(line[18:]))
-                    lll = b''.join(qwerty.get(chr(x), chr(x)).encode('cp862') for x in lll)
-                    out.write(os.path.basename(fname) + '\t"' + lll.decode('cp862').replace('"', '`') + '"\n')
+def parse_text_data(data):
+    with io.BytesIO(data) as stream:
+        items_count = reads_uin16le(stream) & 0x3FFF
+        # print(items_count)
+        index = [(reads_uin16le(stream), reads_uin16le(stream)) for i in range(items_count)]
 
-        # if res_data:
-        #     print(res_data)
-
-        # if texts_data:
-        #     items_count = read_uin16le(texts_data) & 0x3FFF
-        #     print(items_count)
-        #     index = [[read_uin16le(texts_data[2 + i * 4:]), read_uin16le(texts_data[4 + i * 4:])] for i in range(items_count)]
-        #     index = [(offset, size) for offset, size in index if offset != 0xFFFF and size != 0]
-        #     print(index)
-        #     with open(f'{fname[:-4]}.{lang_code}', 'rb') as loc_file:
-        #         for offset, size in index:
-        #             loc_file.seek(offset, 0)
-        #             line = loc_file.read(size)
-        #             print(line)
-        #             break
-
+        # print(index)
+        for offset, size in index:
+            if offset == 0xFFFF or size == 0:
+                yield offset, size, b''
+                continue
+            assert stream.tell() in dict(index) or stream.tell() == len(data), (stream.tell(), index, len(data))
+            stream.seek(offset)
+            line_data = stream.read(size)
+            yield offset, size, line_data

@@ -4,62 +4,10 @@ import glob
 import os
 import glob
 import struct
-import operator
-import base64
 import binascii
 
-from read_tot import read_tot, read_uin16le, fix_value
+from read_tot import read_tot, parse_text, parse_text_data
 from extract import replace_many
-
-def reads_uin16le(stream):
-    return int.from_bytes(stream.read(2), byteorder='little', signed=False)
-
-def reads_uin32le(stream):
-    return int.from_bytes(stream.read(4), byteorder='little', signed=False)
-
-def parse_text(text):
-    # print(text)
-    skip = 0
-    parse_six = False
-    parse_ten = False
-    for c in text:
-        if skip > 0:
-            skip -= 1
-            continue
-        if c == 1:
-            break
-        if c in (2, 5):
-            skip = 4
-            yield ord(b'\n')
-            continue
-        if c == 3 or c == 4:
-            skip = 1
-            continue
-        if c == 6:
-            parse_six = True
-            continue
-        if parse_six:
-            if c & 0x80:
-                skip = 2
-            if c & 0x40:
-                skip = 8
-            parse_six = False
-            continue
-        if c in (7, 8, 9):
-            continue
-        if c == 10:
-            parse_ten = True
-            continue
-        if parse_ten:
-            skip = 2 * c
-            parse_ten = False
-            continue
-        if c >= 0x80:
-            yield c
-            continue
-        if c == 186:
-            raise NotImplementedError('Oy')
-        yield c
 
 def escape(seq):
     return b''.join(f'\\x{v:02x}'.encode() for v in seq)
@@ -108,21 +56,6 @@ def escape_bytes(data):
                 raise NotImplementedError('Oy')
             yield bytes([c])
 
-def parse_text_data(data):
-    with io.BytesIO(data) as stream:
-        items_count = reads_uin16le(stream) & 0x3FFF
-        # print(items_count)
-        index = [(reads_uin16le(stream), reads_uin16le(stream)) for i in range(items_count)]
-
-        # print(index)
-        for offset, size in index:
-            if offset == 0xFFFF or size == 0:
-                yield offset, size, b''
-                continue
-            # assert stream.tell() in dict(index) or stream.tell() == len(data), (stream.tell(), index, len(data))
-            stream.seek(offset)
-            line_data = stream.read(size)
-            yield offset, size, line_data
 
 text_reps = [('"', '`'), ('\t', '|~t~|'), ('\r', '|~r~|')]
 bin_rep = [(chr(i), f'\\x{i:02x}') for i in range(10)]
@@ -252,7 +185,11 @@ if __name__ == '__main__':
             print('FNAME', os.path.basename(fname))
 
             if texts_data:
-                print('SKIPPING', fname)
+                print('INTERNAL', fname)
+                texts = dict(enumerate(parse_text_data(texts_data)))
+                # write texts
+                if extract:
+                    extract_texts(out, os.path.basename(fname), texts)
                 continue
 
             try:
