@@ -180,7 +180,7 @@ if __name__ == '__main__':
         for fname in filenames:
             texts_data = None
             with open(fname, 'rb') as tot_file:
-                texts_data, res_data = read_tot(tot_file)
+                _, _, texts_data, res_data = read_tot(tot_file)
 
             print('FNAME', os.path.basename(fname))
 

@@ -181,7 +181,7 @@ if __name__ == '__main__':
                 res_data = f.read()
         elif ext == '.TOT':
             with open(fname, 'rb') as f:
-                _, res_data = read_tot(f)
+                _, _, _, res_data = read_tot(f)
             if not res_data:
                 continue
 

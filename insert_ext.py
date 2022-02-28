@@ -194,7 +194,7 @@ if __name__ == '__main__':
                 res_data = f.read()
         elif ext == '.TOT':
             with open(fname, 'rb') as f:
-                _, res_data = read_tot(f)
+                _, _, _, res_data = read_tot(f)
                 f.seek(0)
                 data = f.read()
                 outfile += data.replace(res_data, b'')

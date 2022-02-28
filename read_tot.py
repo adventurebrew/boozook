@@ -76,8 +76,10 @@ def read_tot(f):
 
     text_size, resource_size = (after_size, before_size) if text_offset > resources_offset else (before_size, after_size)
 
-    # f.seek(128, 0)
-    # script = f.read(script_end - 128)
+    f.seek(128, 0)
+    script = f.read(script_end - 128)
+    assert not (128 <= text_offset < script_end)
+    assert not (128 <= resources_offset < script_end)
     texts = None
     resources = None
     if text_offset != 0:
@@ -89,7 +91,7 @@ def read_tot(f):
         assert f.read() == b''
 
     # print(texts, resources)
-    return texts, resources
+    return script, functions, texts, resources
 
 def parse_text(text):
     skip = 0
