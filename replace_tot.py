@@ -6,7 +6,7 @@ import glob
 import struct
 import binascii
 
-from read_tot import read_tot, parse_text, parse_text_data
+from read_tot import fix_value, read_tot, parse_text, parse_text_data, read_uin32le
 from extract import replace_many
 
 def escape(seq):
@@ -190,6 +190,19 @@ if __name__ == '__main__':
                 # write texts
                 if extract:
                     extract_texts(out, os.path.basename(fname), texts)
+                else:
+                    texts = dict(enumerate(replace_texts(out, texts)))
+                    with io.BytesIO() as lang_out:
+                        save_lang_file(lang_out, texts_data, texts)
+                        new_texts_data = lang_out.getvalue()
+                    with open(fname, 'rb') as tot_file:
+                        orig_tot = bytearray(tot_file.read())
+                    orig_tot = orig_tot.replace(texts_data, new_texts_data)
+                    resoff = fix_value(read_uin32le(orig_tot[52:]), 0xFFFFFFFF, 0)
+                    if resoff != 0:
+                        orig_tot[52:56] = (resoff + len(new_texts_data) - len(texts_data)).to_bytes(4, byteorder='little', signed=False)
+                    with open(os.path.basename(fname), 'wb') as out_file:
+                        out_file.write(orig_tot)
                 continue
 
             try:

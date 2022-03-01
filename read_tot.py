@@ -61,7 +61,6 @@ def read_tot(f):
 
     # print(variables_count, text_offset, resources_offset, anim_data_size, im_file_number, ex_file_number, commun_handling)
 
-
     functions = [read_uin16le(header[100 + 2 * i:]) for i in range(14)]
     f.seek(0, 2)
     file_size = f.tell()
@@ -76,16 +75,20 @@ def read_tot(f):
 
     text_size, resource_size = (after_size, before_size) if text_offset > resources_offset else (before_size, after_size)
 
+
     f.seek(128, 0)
     script = f.read(script_end - 128)
     assert not (128 <= text_offset < script_end)
     assert not (128 <= resources_offset < script_end)
     texts = None
     resources = None
+
     if text_offset != 0:
+        assert f.tell() == text_offset, (f.tell(), text_offset)
         f.seek(text_offset, 0)
         texts = f.read(text_size)
     if resources_offset != 0:
+        assert f.tell() == resources_offset, (f.tell(), resources_offset)
         f.seek(resources_offset, 0)
         resources = f.read(resource_size)
         assert f.read() == b''
@@ -140,9 +143,6 @@ def parse_text(text):
         yield c
 
 
-
-
-
 def parse_text_data(data):
     with io.BytesIO(data) as stream:
         items_count = reads_uin16le(stream) & 0x3FFF
@@ -154,7 +154,7 @@ def parse_text_data(data):
             if offset == 0xFFFF or size == 0:
                 yield offset, size, b''
                 continue
-            assert stream.tell() in dict(index) or stream.tell() == len(data), (stream.tell(), index, len(data))
+            # assert stream.tell() in dict(index) or stream.tell() == len(data), (stream.tell(), index, len(data))
             stream.seek(offset)
             line_data = stream.read(size)
             yield offset, size, line_data
