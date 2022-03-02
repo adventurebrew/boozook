@@ -1,5 +1,6 @@
 import io
 import os
+import pathlib
 import sys
 import glob
 import itertools
@@ -136,7 +137,7 @@ def unpack_sprite(data, width, height):
         return list(out)
 
 
-palette = [((53 + x) ** 2 * 13 // 5) % 256 for x in range(256 * 3)]
+# palette = [((53 + x) ** 2 * 13 // 5) % 256 for x in range(256 * 3)]
 
 palette = [
 	0x00, 0x00, 0x00,
@@ -158,7 +159,8 @@ palette = [
 ]
 palette = palette * 16
 assert len(palette) == 0x300
-palette = [x << 2 for x in palette]
+# palette = [x << 2 for x in palette]
+palette = [(x << 2) % 256 for x in palette]
 
 
 if __name__ == '__main__':
@@ -171,6 +173,9 @@ if __name__ == '__main__':
     filenames = sorted(glob.iglob(sys.argv[1]))
 
     print(filenames)
+
+    target_dir = pathlib.Path('out-ext')
+    os.makedirs(target_dir, exist_ok=True)
 
     for fname in filenames:
         print(fname)
@@ -186,6 +191,7 @@ if __name__ == '__main__':
                 continue
 
         assert res_data
+        bim = None
         with io.BytesIO(res_data) as f:
             items_count = read_sint16le(f.read(2))
             unknown = f.read(1)[0]
@@ -219,13 +225,14 @@ if __name__ == '__main__':
                         assert unpack_sprite(enc, width, height) == im
                 if width & height:
                     bim = convert_to_pil_image(im, size=(width, height))
-                    bim.putpalette([(x << 2) % 256 for x in palette])
-                    bim.save(f'out-gob2/{basename}_{idx}.png')
-                    print(f'out-gob2/{basename}_{idx}.png')
+                    bim.putpalette(palette)
+                    bim.save(target_dir / f'{basename}_{idx}.png')
+                    print(target_dir / f'{basename}_{idx}.png')
                 elif len(data) == 768:
                     print('PALETTE', basename, idx)
-                    palette = list(data)
-                    bim.putpalette([(x << 2) % 256 for x in palette])
-                    bim.save(f'out-gob2/{basename}_{idx}.png')
+                    palette = [(x << 2) % 256 for x in data]
+                    if bim:
+                        bim.putpalette(palette)
+                        bim.save(target_dir / f'{basename}_{idx}.png')
                 else:
                     print(len(data), len(im))
