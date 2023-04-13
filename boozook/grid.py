@@ -10,6 +10,7 @@ TILE_W = 48 + BASE_XOFF
 TILE_H = 48 + BASE_YOFF
 GRID_SIZE = 16
 
+
 def convert_to_pil_image(char, size=None):
     # print('CHAR:', char)
     npp = np.array(char, dtype=np.uint8)
@@ -19,10 +20,13 @@ def convert_to_pil_image(char, size=None):
     im = Image.fromarray(npp, mode='P')
     return im
 
+
 def get_bg_color(row_size, f, bgs=BGS):
     def get_bg(idx):
         return ord(bgs[f(idx) % len(bgs)])
+
     return get_bg
+
 
 def read_image_grid(filename, w=TILE_W, h=TILE_H, grid_size=GRID_SIZE):
     bim = Image.open(filename)
@@ -32,8 +36,11 @@ def read_image_grid(filename, w=TILE_W, h=TILE_H, grid_size=GRID_SIZE):
             area = (col * w, row * h, (col + 1) * w, (row + 1) * h)
             yield bim.crop(area)
 
-def checkered_grid(nchars, w=TILE_W, h=TILE_H, grid_size=GRID_SIZE, transparency=0, bgs=BGS):
-    assert nchars <= grid_size ** 2, nchars
+
+def checkered_grid(
+    nchars, w=TILE_W, h=TILE_H, grid_size=GRID_SIZE, transparency=0, bgs=BGS
+):
+    assert nchars <= grid_size**2, nchars
 
     bim = convert_to_pil_image([[transparency] * w * grid_size] * h * grid_size)
     get_bg = get_bg_color(grid_size, lambda idx: idx + int(idx / grid_size), bgs=bgs)
@@ -45,8 +52,21 @@ def checkered_grid(nchars, w=TILE_W, h=TILE_H, grid_size=GRID_SIZE, transparency
 
     return bim
 
-def create_char_grid(nchars, chars, w=TILE_W, h=TILE_H, grid_size=GRID_SIZE, base_xoff=BASE_XOFF, base_yoff=BASE_YOFF, transparency=0, bgs=BGS):
-    bim = checkered_grid(nchars, w=w, h=h, grid_size=grid_size, transparency=transparency, bgs=bgs)
+
+def create_char_grid(
+    nchars,
+    chars,
+    w=TILE_W,
+    h=TILE_H,
+    grid_size=GRID_SIZE,
+    base_xoff=BASE_XOFF,
+    base_yoff=BASE_YOFF,
+    transparency=0,
+    bgs=BGS,
+):
+    bim = checkered_grid(
+        nchars, w=w, h=h, grid_size=grid_size, transparency=transparency, bgs=bgs
+    )
 
     # idx is character index in ascii table
     for idx, im in chars:
@@ -57,8 +77,10 @@ def create_char_grid(nchars, chars, w=TILE_W, h=TILE_H, grid_size=GRID_SIZE, bas
 
     return bim
 
+
 def count_in_row(pred, row):
     return sum(1 for _ in itertools.takewhile(pred, row))
+
 
 def resize_frame(im, base_xoff=BASE_XOFF, base_yoff=BASE_YOFF):
     frame = list(np.asarray(im))
