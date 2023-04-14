@@ -1,48 +1,74 @@
 import io
 import operator
-import os
 from itertools import groupby
-from typing import IO, Iterable, Sequence
+from pathlib import Path
+from typing import Iterable, Sequence
 from boozook.archive import GameBase
+from boozook.codex.cat import Language
 from boozook.codex.replace_tot import extract_texts, replace_texts, save_lang_file
 from boozook.totfile import fix_value, parse_text_data, read_tot, read_uint32le
 
 from pakal.archive import ArchivePath
 
 
+def empty_lang(group, lang):
+    return all(line[lang] is None for line in group)
+
+
 def compose(
     game: GameBase,
     lines: Iterable[Sequence[str]],
-    lang_code: str = 'ISR',
-    encoding: str = 'cp862',
 ) -> None:
-    grouped = groupby(lines, key=operator.itemgetter(0))
+    grouped = groupby(lines, key=operator.itemgetter('FILE'))
     for tfname, group in grouped:
-        basename = os.path.basename(tfname)
+        basename = Path(tfname).name
+        group = list(group)
+        langs = list(group[0].keys())
+        langs.remove('FILE')
         for pattern, entry in game.search([basename]):
-            source, texts, texts_data = get_original_texts(game, entry)
-            texts = dict(enumerate(replace_texts(group, texts)))
-            assert texts
-            with io.BytesIO() as lang_out:
-                save_lang_file(lang_out, texts)
-                new_texts_data = lang_out.getvalue()
-            print(source)
-            # assert texts_data == new_texts_data, (texts_data, new_texts_data)
-            if source.name != entry.name:
-                game.patch(
-                    source.name,
-                    new_texts_data,
-                    f'{source.stem}.{lang_code}',
+            texts = get_original_texts(game, entry)
+            new_texts = {
+                lang: dict(
+                    enumerate(
+                        replace_texts(iter(group), texts.get(lang, texts['DAT']), lang)
+                    )
                 )
-            else:
-                orig_tot = bytearray(entry.read_bytes())
-                orig_tot = orig_tot.replace(texts_data, new_texts_data)
-                resoff = fix_value(read_uint32le(orig_tot[52:]), 0xFFFFFFFF, 0)
-                if resoff != 0:
-                    orig_tot[52:56] = (
-                        resoff + len(new_texts_data) - len(texts_data)
-                    ).to_bytes(4, byteorder='little', signed=False)
-                game.patch(source.name, bytes(orig_tot))
+                for lang in langs
+                if not empty_lang(group, lang)
+            }
+
+            for lang, lang_text in new_texts.items():
+                if lang == 'INT' and 'INT' not in texts:
+                    continue
+                texts_data = texts.get(lang, texts['DAT'])
+                with io.BytesIO() as lang_out:
+                    save_lang_file(lang_out, lang_text)
+                    new_texts_data = lang_out.getvalue()
+                # assert texts_data == lang_text, (texts_data, lang_text)
+
+                parsed = dict(enumerate(parse_text_data(new_texts_data)))
+                assert parsed == lang_text, (parsed, lang_text)
+
+                if lang != 'INT':
+                    game.patch(
+                        (
+                            f'{Path(tfname).stem}.{lang}'
+                            if lang in texts
+                            else f'{Path(tfname).stem}.DAT'
+                        ),
+                        new_texts_data,
+                        f'{Path(tfname).stem}.{lang}',
+                    )
+
+                else:
+                    orig_tot = bytearray(entry.read_bytes())
+                    orig_tot = orig_tot.replace(texts_data, new_texts_data)
+                    resoff = fix_value(read_uint32le(orig_tot[52:]), 0xFFFFFFFF, 0)
+                    if resoff != 0:
+                        orig_tot[52:56] = (
+                            resoff + len(new_texts_data) - len(texts_data)
+                        ).to_bytes(4, byteorder='little', signed=False)
+                    game.patch(basename, bytes(orig_tot))
             break
         else:
             raise ValueError(f'entry {basename} was not found')
@@ -52,30 +78,26 @@ def get_original_texts(
     game: GameBase,
     entry: ArchivePath,
 ):
+    sources = {}
     with entry.open('rb') as stream:
         _, _, texts_data, res_data = read_tot(stream)
-    source = entry.name
-    if not texts_data:
-        lang_patterns = [f'{entry.stem}.{ext}' for ext in ('ANG', 'ISR', 'DAT', 'ALL')]
-        for pattern, lang_file in game.search(lang_patterns):
-            texts_data = lang_file.read_bytes()
-            source = lang_file
-            break
-        else:
-            # Lang file was not found, skip TOT entry
-            matches = list(y.name for x, y in game.search([f'{entry.stem}.*']))
-            print(f'no text data, please consider looking at: {matches}')
-            return source, None, texts_data
+    if texts_data:
+        sources['INT'] = texts_data
+    lang_patterns = [f'{entry.stem}.{ext.name}' for ext in Language]
+    for pattern, lang_file in game.search(lang_patterns):
+        sources[lang_file.suffix[1:]] = lang_file.read_bytes()
 
-    return source, dict(enumerate(parse_text_data(texts_data))), texts_data
+    return {
+        source: dict(enumerate(parse_text_data(texts_data)))
+        for source, texts_data in sources.items()
+    }
 
 
 def write_parsed(
     game: GameBase,
     entry: ArchivePath,
-    outstream: IO[str],
 ) -> None:
-    source, texts, _ = get_original_texts(game, entry)
+    texts = get_original_texts(game, entry)
     if not texts:
         return
-    extract_texts(outstream, entry.name, source, texts)
+    yield from extract_texts(texts)

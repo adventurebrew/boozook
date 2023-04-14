@@ -1,6 +1,7 @@
+from collections import defaultdict
 import io
+import itertools
 import struct
-import binascii
 
 from boozook.codex.stk import replace_many
 
@@ -56,64 +57,38 @@ def escape_bytes(data):
 
 
 text_reps = [('"', '`'), ('\t', '|~t~|'), ('\r', '|~r~|')]
-bin_rep = [(chr(i), f'\\x{i:02x}') for i in range(10)]
+bin_rep = [(chr(i), f'\\x{i:02x}') for i in itertools.chain(range(10), [18])]
 
 
-qwerty = {
-    't': 'א',
-    'c': 'ב',
-    'd': 'ג',
-    's': 'ד',
-    'v': 'ה',
-    'u': 'ו',
-    'z': 'ז',
-    'j': 'ח',
-    'y': 'ט',
-    'h': 'י',
-    'l': 'ך',
-    'f': 'כ',
-    'k': 'ל',
-    'o': 'ם',
-    'n': 'מ',
-    'i': 'ן',
-    'b': 'נ',
-    'x': 'ס',
-    'g': 'ע',
-    ';': 'ף',
-    'p': 'פ',
-    '.': 'ץ',
-    'm': 'צ',
-    'e': 'ק',
-    'r': 'ר',
-    'a': 'ש',
-    ',': 'ת',
-    '\'': ',',
-    '/': '.',
-    'w': "'",
-}
-
-
-def extract_texts(out, basename, source, texts):
-    for idx, (offset, size, line_data) in texts.items():
-        if len(line_data) > 18 and line_data[18] not in {0, ord(b'@'), 4}:
-            escaped = b''.join(escape_bytes(line_data[18:]))
-            # assert aaa == line_data[18:], (aaa, line_data[18:])
-            # TODO read and replace line
-            text = replace_many(
-                escaped.decode('cp850'),
-                *text_reps,
-                *bin_rep,
-            )  # , ('\n', '|~$~|'))
-            # if Path(source.name).suffix == '.ISR':
-            #     text = '\n'.join(x[::-1] for x in replace_many(text, *qwerty.items()).split('\n'))
-            print(
-                basename,
-                source,
-                binascii.hexlify(line_data[:18]).decode(),
-                f'"{text}"',
-                sep='\t',
-                file=out,
-            )
+def extract_texts(sources):
+    text_line_data = defaultdict(dict)
+    for lang, texts in sources.items():
+        for idx, (offset, size, line_data) in texts.items():
+            text_line_data[idx][lang] = None
+            if len(line_data) > 18 and line_data[18] not in {0, ord(b'@'), 4}:
+                escaped = b''.join(escape_bytes(line_data[18:]))
+                # assert aaa == line_data[18:], (aaa, line_data[18:])
+                # TODO read and replace line
+                text = replace_many(
+                    escaped.decode('utf-8', errors='surrogateescape'),
+                    *text_reps,
+                    *bin_rep,
+                )  # , ('\n', '|~$~|'))
+                # if Path(source.name).suffix == '.ISR':
+                #     text = '\n'.join(x[::-1] for x in replace_many(text, *qwerty.items()).split('\n'))
+                text_line_data[idx][lang] = text.encode(
+                    'utf-8',
+                    errors='surrogateescape',
+                )
+                # print(
+                #     basename,
+                #     source,
+                #     binascii.hexlify(line_data[:18]).decode(),
+                #     f'"{text}"',
+                #     sep='\t',
+                #     file=out,
+                # )
+    yield from text_line_data.values()
 
 
 def build_line_breaks(lines):
@@ -121,20 +96,20 @@ def build_line_breaks(lines):
     while True:
         two, cont2 = '', lines
         five, cont5 = '', lines
-        if '|~$~|' in lines:
-            two, cont2 = lines.split('|~$~|', maxsplit=1)
-        if '|~~~|' in lines:
-            five, cont5 = lines.split('|~~~|', maxsplit=1)
+        if b'|~$~|' in lines:
+            two, cont2 = lines.split(b'|~$~|', maxsplit=1)
+        if b'|~~~|' in lines:
+            five, cont5 = lines.split(b'|~~~|', maxsplit=1)
 
         if not two and not five:
             yield lines
             return
 
         if two and (not five or len(two) < len(five)):
-            yield two + f'\\x02\\x00\\x00\\x{num:02x}\\x00'
+            yield two + f'\\x02\\x00\\x00\\x{num:02x}\\x00'.encode('ascii')
             lines = cont2
         else:
-            yield five + f'\\x05\\x00\\x00\\x{num:02x}\\x00'
+            yield five + f'\\x05\\x00\\x00\\x{num:02x}\\x00'.encode('ascii')
             lines = cont5
         num += 10
         # two, cont2 = lines.split('|~~~|', maxsplit=1)
@@ -163,24 +138,27 @@ bump_lets = [(chr(c), chr(r)) for c, r in bump_lets]
 # exit(1)
 
 
-def replace_texts(lines, texts):
-    for offset, size, line_data in texts.values():
-        if len(line_data) > 18 and line_data[18] not in {0, ord(b'@'), 4}:
-            fname, source, padding, escaped = next(lines)
+def replace_texts(lines, texts, lang):
+    for (offset, size, line_data), line in zip(texts.values(), lines):
+        escaped = line[lang]
+        if (
+            len(line_data) > 18
+            and line_data[18] not in {0, ord(b'@'), 4}
+            and escaped is not None
+        ):
             escaped = replace_many(
                 escaped,
-                ('\n~~~\n', '|~~~|'),
-                ('\n', '|~$~|'),
-                ('`', '"'),
-                ('|~t~|', '\t'),
+                (b'\n~~~\n', b'|~~~|'),
+                (b'\n', b'|~$~|'),
+                (b'`', b'"'),
+                (b'|~t~|', b'\t'),
             )
-            breaked = ''.join(build_line_breaks(escaped))
+            breaked = b''.join(build_line_breaks(escaped))
             # breaked = replace_many(breaked, *bump_lets)
-            encoding = 'cp850'  # 'windows-1255'  # 'cp862'
             encoded = b''.join(
                 encode_seq(i, seq)
                 for i, seq in enumerate(
-                    breaked.encode(encoding, errors='ignore').split(b'\\x'),
+                    breaked.split(b'\\x'),
                 )
             )
             # assert line_data[18:].startswith(encoded), (line_data[18:-2], encoded)
@@ -201,11 +179,11 @@ def save_lang_file(out, texts):
     uint16le_x2 = struct.Struct('<2H')
     out.write(len(texts).to_bytes(2, byteorder='little', signed=False))
     ordered = sorted(texts.items(), key=lambda t: t[1][0])
-    print('ORDERED', [(idx, offset, size) for idx, (offset, size, _) in ordered])
+    # print('ORDERED', [(idx, offset, size) for idx, (offset, size, _) in ordered])
     edited = {}
     with io.BytesIO() as outstream:
         goff = 2 + 4 * len(texts)
-        print('GOFF', goff)
+        # print('GOFF', goff)
         for idx, (offset, size, line_data) in ordered:
             if offset not in edited:
                 edited[offset] = goff
@@ -214,6 +192,6 @@ def save_lang_file(out, texts):
                 outstream.write(line_data)
                 goff = edited[offset] + len(line_data)
         for idx, (offset, size, line_data) in texts.items():
-            print('OFFSET', offset, line_data)
+            # print('OFFSET', offset, line_data)
             out.write(uint16le_x2.pack(offset, size))
         out.write(outstream.getvalue())
