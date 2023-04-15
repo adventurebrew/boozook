@@ -6,7 +6,6 @@ from boozook.codex import ext
 
 
 GRAPHICS_PATTERNS = {
-    '*.EXT': ('graphics', ext.parse, ext.compose),
     '*.TOT': ('graphics', ext.parse, ext.compose),
 }
 

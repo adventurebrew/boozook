@@ -22,6 +22,10 @@ def read_uint32le(f):
     return int.from_bytes(f[:4], byteorder='little', signed=False)
 
 
+def read_sint32le(f):
+    return int.from_bytes(f[:4], byteorder='little', signed=True)
+
+
 def pack_sprite(data):
     groups = [(v, list(g)) for v, g in itertools.groupby(data)]
     out = bytearray()
@@ -165,64 +169,93 @@ assert len(PALETTE) == 0x300
 PALETTE = [(x << 2) % 256 for x in PALETTE]
 
 
+def read_ext_table(stream):
+    items_count = read_sint16le(stream.read(2))
+    unknown = stream.read(1)[0]
+    assert items_count > 0, items_count
+
+    for i in range(items_count):
+        offset = read_sint32le(stream.read(4))
+        size = read_uint16le(stream.read(2))
+        width = read_uint16le(stream.read(2))
+        height = read_uint16le(stream.read(2))
+        packed = width & 0x8000 != 0
+        width &= 0x7FFF
+        yield (offset, size, width, height, packed)
+
+
 def parse(game: GameBase, entry: ArchivePath, target: str | Path):
     target = Path(target)
-    ext = entry.suffix
-    if ext == '.EXT':
-        res_data = entry.read_bytes()
-    elif ext == '.TOT':
-        with entry.open('rb') as f:
-            _, _, _, res_data = read_tot(f)
-        if not res_data:
-            return
+    reses = {}
+    with entry.open('rb') as f:
+        _, _, _, res_data = read_tot(f)
+    if res_data:
+        reses['TOT'] = res_data
 
-    assert res_data
+    for ext_pattern, ext_entry in game.search([entry.with_suffix('.EXT').name]):
+        res_data = ext_entry.read_bytes()
+        reses['EXT'] = res_data
+
+    com_data = {}
+    for com_pattern, com_entry in game.search(['COMMUN.EX*']):
+        com_data[com_entry.name] = com_entry.read_bytes()
+
     bim = None
     palette = list(PALETTE)
-    with io.BytesIO(res_data) as f:
-        items_count = read_sint16le(f.read(2))
-        unknown = f.read(1)[0]
-        assert items_count > 0, items_count
+    for ext, res_data in reses.items():
+        with io.BytesIO(res_data) as f:
+            items = list(read_ext_table(f))
+            table_off = f.tell()
+            for idx, (offset, size, width, height, packed) in enumerate(items):
+                if offset < 0:
+                    print('NEGATIVE OFFSET')
+                    if ext == 'TOT':
+                        raise ValueError('IM resource not implemented')
+                    # TODO: handle different COMMUN.EX file for different TOTs
+                    with io.BytesIO(com_data[com_entry.name]) as stream:
+                        assert ~offset == -(offset + 1)
+                        stream.seek(~offset)
+                        if packed:
+                            uncompressed_size = reads_uint32le(stream)
+                            data = unpack_chunk(stream, uncompressed_size)
+                        else:
+                            data = stream.read(size)
+                else:
+                    assert f.tell() == offset + table_off, (
+                        f.tell(),
+                        offset + table_off,
+                    )
+                    if packed:
+                        if ext == 'TOT':
+                            continue
+                        uncompressed_size = reads_uint32le(f)
+                        data = unpack_chunk(f, uncompressed_size)
+                    else:
+                        data = f.read(size)
+                if data[:2] == b'\x01\x02':
+                    print('UNCOMPRESS', entry.name, idx)
+                    im = uncompress_sprite(data[2:], width, height)
+                else:
+                    print('UNPACK', entry.name, idx)
+                    im = unpack_sprite(data, width, height)
 
-        items = []
-        for i in range(items_count):
-            offset = read_uint32le(f.read(4))
-            size = read_uint16le(f.read(2))
-            width = read_uint16le(f.read(2))
-            height = read_uint16le(f.read(2))
-            packed = width & 0x8000 != 0
-            width &= 0x7FFF
-            assert not packed
-            items.append((offset, size, width, height, packed))
-
-        table_off = f.tell()
-        for idx, (offset, size, width, height, packed) in enumerate(items):
-            assert f.tell() == offset + table_off, (f.tell(), offset + table_off)
-            data = f.read(size)
-            if data[:2] == b'\x01\x02':
-                print('UNCOMPRESS', entry.name, idx)
-                im = uncompress_sprite(data[2:], width, height)
-            else:
-                print('UNPACK', entry.name, idx)
-                im = unpack_sprite(data, width, height)
-
-                if im:
-                    enc = pack_sprite(im)
-                    assert enc == data, (enc, data)
-                    assert unpack_sprite(enc, width, height) == im
-            if width & height:
-                bim = convert_to_pil_image(im, size=(width, height))
-                bim.putpalette(palette)
-                bim.save(target / f'{entry.name}_{idx}.png')
-                print(target / f'{entry.name}_{idx}.png')
-            elif len(data) == 768:
-                print('PALETTE', entry.name, idx)
-                palette = [(x << 2) % 256 for x in data]
-                if bim:
+                    if im:
+                        enc = pack_sprite(im)
+                        assert enc == data, (enc, data)
+                        assert unpack_sprite(enc, width, height) == im
+                if width & height:
+                    bim = convert_to_pil_image(im, size=(width, height))
                     bim.putpalette(palette)
                     bim.save(target / f'{entry.name}_{idx}.png')
-            else:
-                print(len(data), len(im))
+                    print(target / f'{entry.name}_{idx}.png')
+                elif len(data) == 768:
+                    print('PALETTE', entry.name, idx)
+                    palette = [(x << 2) % 256 for x in data]
+                    if bim:
+                        bim.putpalette(palette)
+                        bim.save(target / f'{entry.name}_{idx}.png')
+                else:
+                    print(len(data), len(im))
 
 
 def compose(game: GameBase, entry: ArchivePath, target: str | Path):

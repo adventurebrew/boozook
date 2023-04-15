@@ -160,6 +160,7 @@ def recompress_archive(archive, patches, target, force_recompress=False):
             output.write(content)
             orig_offs[archive.index[file.name]] = index[file.name]
         for fname, content in patches.items():
+            assert fname not in index, (list(index.keys()), list(patches.keys()))
             index[fname] = STKFileEntry(output.tell(), len(content), False)
             if len(content) % 2:
                 content += b'\0'

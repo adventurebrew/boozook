@@ -101,10 +101,12 @@ class DirectoryBackedArchive(MutableMapping[str, bytes]):
         return (self.directory / key).read_bytes()
 
     def __iter__(self) -> Iterator[str]:
-        return iter(self._allowed)
+        return iter(
+            sorted(fname for fname in self._allowed if fname not in self._popped)
+        )
 
     def __len__(self) -> int:
-        return len(self._allowed)
+        return len(set(iter(self)))
 
     def __delitem__(self, key: str) -> None:
         self._cache.pop(key, None)
@@ -152,7 +154,7 @@ if __name__ == '__main__':
             if ext_archive.is_dir():
                 patches = DirectoryBackedArchive(
                     ext_archive,
-                    allowed=[x.name for x in ext_archive.iterdir()],
+                    allowed={x.name for x in ext_archive.iterdir()},
                 )
                 with stk.open(entry) as archive:
                     recompress_archive(archive, patches, patch_dir / entry.name)
