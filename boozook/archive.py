@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import itertools
 import os
 from pathlib import Path
-from typing import Iterable, Iterator, MutableMapping, Optional, Sequence
+from typing import Iterable, Iterator, MutableMapping, Optional, Sequence, Set
 
 from boozook.codex import stk
 from boozook.codex.stk_compress import recompress_archive
@@ -39,6 +39,8 @@ def game_search(base_dir, patterns=('*',), patches=()):
 class GameBase:
     base_dir: str
     patches: Optional[Sequence[str]]
+    allowed_patches: Optional[Set[str]] = None
+    restricted_patches: Optional[Set[str]] = None
 
     _patched: dict[tuple[str, str], bytes] = field(default_factory=dict)
 
@@ -48,6 +50,11 @@ class GameBase:
     def patch(self, fname: str, data: bytes, alias: str | None = None):
         if not alias:
             alias = fname
+        if self.allowed_patches:
+            if not any(Path(alias).match(pattern) for pattern in self.allowed_patches):
+                return
+        if any(Path(alias).match(pattern) for pattern in self.restricted_patches or ()):
+            return
         self._patched[(fname, alias)] = data
 
     def rebuild(self, target='patch'):
@@ -76,8 +83,16 @@ class GameBase:
                 raise ValueError(f'archive {arc} was not found')
 
 
-def open_game(base_dir, patches=()):
-    return GameBase(base_dir, patches=patches)
+def open_game(
+    base_dir,
+    patches=(),
+    allowed_patches=(),
+):
+    return GameBase(
+        base_dir,
+        patches=patches,
+        allowed_patches=set(allowed_patches),
+    )
 
 
 class DirectoryBackedArchive(MutableMapping[str, bytes]):

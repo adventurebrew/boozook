@@ -126,6 +126,12 @@ if __name__ == '__main__':
         action='store_true',
         help='create modifed game resource with the changes',
     )
+    parser.add_argument(
+        '--allowed',
+        '-i',
+        action='append',
+        help='allow only specific patterns to be modified',
+    )
     args = parser.parse_args()
 
     patterns = TEXT_PATTERNS
@@ -133,7 +139,7 @@ if __name__ == '__main__':
     texts_dir = Path('texts')
     os.makedirs(texts_dir, exist_ok=True)
 
-    game = archive.open_game(args.directory)
+    game = archive.open_game(args.directory, allowed_patches=args.allowed or ())
     if not args.rebuild:
         decode(game, patterns, texts_dir)
     else:
