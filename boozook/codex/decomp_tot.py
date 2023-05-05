@@ -1,3 +1,4 @@
+from collections import defaultdict
 from contextlib import redirect_stdout
 from functools import partial
 import io
@@ -5,6 +6,7 @@ import os
 from pathlib import Path
 from boozook import archive
 from boozook.codex import tot
+from boozook.codex.crypt import CodePageEncoder, HebrewKeyReplacer
 from boozook.codex.ext import read_ext_table
 from boozook.codex.let import read_sint16le
 from boozook.codex.stk import replace_many, unpack_chunk
@@ -288,6 +290,27 @@ def read_var_index(scf, arg_0=0, arg_4=0):
     # return expr
 
 
+def xparam(name):
+    def inner(scf):
+        raise NotImplementedError(name)
+
+    return inner
+
+
+def gparam(name):
+    def inner(scf):
+        globals()[name](scf)
+
+    return inner
+
+
+def fparam(name, *params):
+    def inner(scf):
+        printl(f'{name}', *(param(scf) for param in params))
+
+    return inner
+
+
 def o1_callSub(scf):
     offset = read_uint16le(scf.read(2))
     printl('o1_callSub', offset)
@@ -329,7 +352,9 @@ def video_o2_loadMult(scf):
         iid &= 0x7FFF
         _skip = scf.read(1)
 
-    data = read_ext_item(ext_items, iid - 30000, ext_data, com_data[com_entry.name])
+    data = read_ext_item(
+        ext_items, iid - 30000, ext_data, com_entry and com_data[com_entry.name]
+    )
 
     with io.BytesIO(data) as stream:
         static_count = reads_uint8(stream) + 1
@@ -450,6 +475,25 @@ def video_o1_loadStatic(scf):
     return expr, s_size1, s_size2, num
 
 
+def video_o2_pushVars(scf):
+    count = reads_uint8(scf)
+    params = []
+
+    for i in range(count):
+        if peek_uint8(scf) in {25, 28}:
+            params.append((read_var_index(scf), 'animDataSize'))
+            _skip = scf.read(1)
+        else:
+            params.append((read_var_index(scf), 4))
+
+    return params
+
+
+def video_o2_playMult(scf):
+    mult_data = reads_uint16le(scf)
+    return mult_data >> 1, mult_data & 1
+
+
 def vparam(name, *params):
     def inner(scf):
         printl(f'(D) {name}', *(param(scf) for param in params))
@@ -464,8 +508,23 @@ def lvparam(name, lfunc):
     return inner
 
 
+def cparam(name, *params):
+    def inner(scf):
+        printl(f'(G) {name}', *(param(scf) for param in params))
+
+    return inner
+
+
+def lcparam(name, lfunc):
+    def inner(scf):
+        printl(f'(G) {name}', *lfunc(scf))
+
+    return inner
+
+
 video_ops = {
     0x00: lvparam('o2_loadMult', video_o2_loadMult),
+    0x01: lvparam('o2_playMult', video_o2_playMult),
     0x02: vparam('o2_freeMultKeys', reads_uint16le),
     0x07: vparam(
         'o1_initCursor',
@@ -509,8 +568,14 @@ video_ops = {
     0x1B: vparam('o1_freeStatic', read_expr),
     0x1C: vparam('o2_renderStatic', read_expr, read_expr),
     0x1D: vparam('o2_loadCurLayer', read_expr, read_expr),
+    0x20: vparam('o2_playCDTrack', read_expr),
+    0x22: vparam('o2_stopCD'),
+    0x23: vparam('o2_readLIC', read_expr),
+    0x24: vparam('o2_freeLIC'),
+    0x25: vparam('o2_getCDTrackPos', read_var_index, read_var_index),
     0x40: vparam('o2_totSub', video_o2_totSub),
     0x41: vparam('o2_switchTotSub', reads_uint16le, reads_uint16le),
+    0x42: lvparam('o2_pushVars', video_o2_pushVars),
     0x50: lvparam('o2_loadMapObjects', video_o2_loadMapObjects),
     0x51: vparam('o2_freeGoblins'),
     0x52: vparam('o2_moveGoblin', read_expr, read_expr, read_expr),
@@ -519,6 +584,9 @@ video_ops = {
     0x55: vparam('o2_setGoblinState', read_expr, read_expr, read_expr),
     0x56: vparam('o2_placeGoblin', read_expr, read_expr, read_expr, read_expr),
     0x80: vparam('o2_initScreen', reads_uint8, reads_uint8, read_expr, read_expr),
+    0x81: vparam(
+        'o2_scroll', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr
+    ),
     0x82: vparam('o2_setScrollOffset', read_expr, read_expr),
     0x83: vparam(
         'o2_playImd',
@@ -532,6 +600,15 @@ video_ops = {
         read_expr,
         read_expr,
     ),
+    0x84: vparam(
+        'o2_getImdInfo',
+        read_expr,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+    ),
     0x85: vparam('o2_openItk', read_expr),
     0x86: vparam('o2_closeItk'),
 }
@@ -543,6 +620,107 @@ def o1_drawOperations(scf):
     if vfunc is None:
         raise ValueError(f'Missing video op {hex(vop)} = {vop}')
     vfunc(scf)
+
+
+goblin_lookup = {
+    0: 0,
+    1: 1,
+    2: 2,
+    4: 3,
+    5: 4,
+    6: 5,
+    7: 6,
+    8: 7,
+    9: 8,
+    10: 9,
+    12: 10,
+    13: 71,
+    14: 12,
+    15: 13,
+    16: 14,
+    21: 15,
+    22: 16,
+    23: 17,
+    24: 18,
+    25: 19,
+    26: 20,
+    27: 21,
+    28: 22,
+    29: 23,
+    30: 24,
+    32: 25,
+    33: 26,
+    34: 27,
+    35: 28,
+    36: 29,
+    37: 30,
+    40: 31,
+    41: 32,
+    42: 33,
+    43: 34,
+    44: 35,
+    50: 36,
+    52: 37,
+    53: 38,
+    100: 39,
+    152: 40,
+    200: 41,
+    201: 42,
+    202: 43,
+    203: 44,
+    204: 45,
+    250: 46,
+    251: 47,
+    252: 48,
+    500: 49,
+    502: 50,
+    503: 51,
+    600: 52,
+    601: 53,
+    602: 54,
+    603: 55,
+    604: 56,
+    605: 57,
+    1000: 58,
+    1001: 59,
+    1002: 60,
+    1003: 61,
+    1004: 62,
+    1005: 63,
+    1006: 64,
+    1008: 65,
+    1009: 66,
+    1010: 67,
+    1011: 68,
+    1015: 69,
+    2005: 70,
+    3: 71,
+}
+
+
+def gob_o2_handleGoblins(scf):
+    return [reads_uint16le(scf) * 4 for _ in range(6)]
+
+
+goblin_ops = {
+    0x00: xparam('o2_loadInfogramesIns'),
+    0x01: cparam('o2_startInfogrames', reads_uint16le),
+    0x02: cparam('o2_stopInfogrames', reads_uint16le),
+    0x09: xparam('o2_playInfogrames'),
+    0x27: lcparam('o2_handleGoblins', gob_o2_handleGoblins),
+    0x47: xparam('o1_dummy'),
+}
+
+
+def o2_goblinFunc(scf):
+    cmd = reads_uint16le(scf)
+    _skip = scf.read(2)
+
+    if cmd != 101:
+        gfunc = goblin_ops.get(goblin_lookup[cmd])
+        if gfunc is None:
+            raise ValueError(f'Missing goblin op {hex(cmd)} = {cmd}')
+        gfunc(scf)
 
 
 def o1_loadTot(scf):
@@ -709,8 +887,8 @@ def evaluate_new(scf):
         back_color, front_color = scf.read(2)
         if 5 <= typ <= 8:
             ln = reads_uint16le(scf)
-            func_block(scf, 2)
-            # _skipped = scf.read(ln)
+            # func_block(scf, 2)
+            _skipped = scf.read(ln)
         if typ & 1 == 0:
             func_block(scf, 2)
             # _skipped = read_block(scf)
@@ -739,8 +917,10 @@ def func_block(scf, ret_flag):
         for i in range(cmd_count):
             evaluate_new(scf)
         # print(scf.read(1))
+
         ctx['indent'] -= 1
         return
+
     assert block_type == 1, block_type
     size = reads_uint16le(scf)
 
@@ -787,27 +967,6 @@ def func_block(scf, ret_flag):
 
     assert scf.tell() - block_start == size + 2, (scf.tell() - block_start, size + 2)
     ctx['indent'] -= 1
-
-
-def xparam(name):
-    def inner(scf):
-        raise NotImplementedError(name)
-
-    return inner
-
-
-def gparam(name):
-    def inner(scf):
-        globals()[name](scf)
-
-    return inner
-
-
-def fparam(name, *params):
-    def inner(scf):
-        printl(f'{name}', *(param(scf) for param in params))
-
-    return inner
 
 
 def o1_printTotText(scf):
@@ -915,7 +1074,7 @@ gob2_ops = {
     0x18: xparam('o2_addHotspot'),
     0x19: xparam('o2_removeHotspot'),
     0x1A: gparam('o2_getTotTextItemPart'),
-    0x25: xparam('o2_goblinFunc'),
+    0x25: gparam('o2_goblinFunc'),
     0x39: fparam('o2_stopSound', read_expr),
     0x3A: gparam('o2_loadSound'),
     0x3E: fparam('o2_getFreeMem', read_var_index, read_var_index),
@@ -973,6 +1132,8 @@ def read_ext_item(items, index, ext_data, com_data):
     offset, size, width, height, packed = items[index]
     if offset < 0:
         print('NEGATIVE OFFSET')
+        if com_data is None:
+            raise ValueError('No commun data')
         # TODO: handle different COMMUN.EX file for different TOTs
         with io.BytesIO(com_data) as cstream:
             assert ~offset == -(offset + 1)
@@ -998,11 +1159,26 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='extract pak archive')
     parser.add_argument('directory', help='game directory to work on')
     parser.add_argument('totfile', help='script to decompile')
+    parser.add_argument(
+        '--keys',
+        '-k',
+        action='store_true',
+        help='replace text by keyboard key position',
+    )
+
     args = parser.parse_args()
 
     game = archive.open_game(args.directory)
 
+    decoders = defaultdict(lambda: CodePageEncoder('cp850'))
+    decoders['ISR'] = CodePageEncoder('windows-1255')
+    decoders['KOR'] = CodePageEncoder('utf-8', errors='surrogateescape')
+
+    if args.keys:
+        decoders['ISR'] = HebrewKeyReplacer
+
     com_data = {}
+    com_entry = None
     for com_pattern, com_entry in game.search(['COMMUN.EX*']):
         com_data[com_entry.name] = com_entry.read_bytes()
 
@@ -1023,7 +1199,7 @@ if __name__ == '__main__':
 
         texts = dict(
             enumerate(
-                {lang: decrypt(line, lang) for lang in line}
+                {lang: decrypt(decoders, line, lang) for lang in line}
                 for line in tot.write_parsed(game, entry)
             )
         )
@@ -1051,7 +1227,7 @@ if __name__ == '__main__':
             with redirect_stdout(outstream):
                 print(functions)
                 with io.BytesIO(script) as scfa:
-                    works_on = on_functions(scfa)
+                    # works_on = on_functions(scfa)
                     works_on = on_all_file(scfa)
                     for _ in works_on:
                         ctx['offset'] = scfa.tell()
