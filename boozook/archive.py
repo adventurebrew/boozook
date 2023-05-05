@@ -9,10 +9,10 @@ from boozook.codex import stk
 from boozook.codex.stk_compress import recompress_archive
 
 
-ARCHIVE_PATTERN = '*.STK'
+ARCHIVE_PATTERNS = ('*.STK',)
 
 
-def game_search(base_dir, patterns=('*',), patches=()):
+def game_search(base_dir, patterns=('*',), patches=(), archives=ARCHIVE_PATTERNS):
     parsed_files = set()
 
     base_dir = Path(base_dir)
@@ -20,19 +20,20 @@ def game_search(base_dir, patterns=('*',), patches=()):
     if patches is not None:
         for rp in itertools.chain(patches, ('.',)):
             patch_dir = base_dir / rp
-            for text_pattern in patterns:
-                for entry in sorted(patch_dir.glob(text_pattern)):
+            for pattern in patterns:
+                for entry in sorted(patch_dir.glob(pattern)):
                     if not (entry.is_dir() or entry.name in parsed_files):
                         parsed_files.add(entry.name)
-                        yield text_pattern, entry
+                        yield pattern, entry
 
-    for archive_path in sorted(base_dir.glob(ARCHIVE_PATTERN)):
-        with stk.open(archive_path) as archive:
-            for text_pattern in patterns:
-                for entry in archive.glob(text_pattern):
-                    if entry.name not in parsed_files:
-                        parsed_files.add(entry.name)
-                        yield text_pattern, entry
+    for archive_pattern in archives:
+        for archive_path in sorted(base_dir.glob(archive_pattern)):
+            with stk.open(archive_path) as archive:
+                for pattern in patterns:
+                    for entry in archive.glob(pattern):
+                        if entry.name not in parsed_files:
+                            parsed_files.add(entry.name)
+                            yield pattern, entry
 
 
 @dataclass
@@ -65,7 +66,7 @@ class GameBase:
             print(f'should patch {fname} as {alias}')
             for pattern, entry in self.search([fname]):
                 if isinstance(entry, Path):
-                    (target / entry.name).write_bytes(data)
+                    (target / alias).write_bytes(data)
                 else:
                     print(
                         f'Patch {fname} as {alias} in {Path(entry.archive._filename).name}'
@@ -134,6 +135,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='extract pak archive')
     parser.add_argument('directory', help='game directory with files to extract')
     parser.add_argument(
+        'patterns',
+        nargs='*',
+        default=ARCHIVE_PATTERNS,
+        help='game directory with files to extract',
+    )
+    parser.add_argument(
         '--extract', '-e', action='store_true', help='extract game archives'
     )
     parser.add_argument(
@@ -149,7 +156,7 @@ if __name__ == '__main__':
 
     game = open_game(args.directory)
     if args.extract:
-        for pattern, entry in game.search([ARCHIVE_PATTERN]):
+        for pattern, entry in game.search(args.patterns):
             base_archive = entry.name
             ext_archive = extract_dir / base_archive
             os.makedirs(ext_archive, exist_ok=True)
@@ -163,7 +170,7 @@ if __name__ == '__main__':
     if args.compress:
         patch_dir = Path('patch')
         os.makedirs(patch_dir, exist_ok=True)
-        for pattern, entry in game.search([ARCHIVE_PATTERN]):
+        for pattern, entry in game.search(args.patterns):
             base_archive = entry.name
             ext_archive = extract_dir / base_archive
             if ext_archive.is_dir():
