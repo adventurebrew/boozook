@@ -18,17 +18,17 @@ def escape_bytes(data):
                 break
             c = r[0]
             if c == 1:
-                rest = stream.read(2)
+                rest = stream.read(1)
+                if rest == b'\0':
+                    break
                 print(len(rest), stream.tell(), stream.tell() % 2)
-                # assert set(rest) == {0}, rest
-                # yield escape(bytes([c]) + rest)
-                break
+                print('REST', rest, stream.read())
+                yield escape(bytes([c]) + rest)
+                continue
             if c in (2, 5):
-                col = escape(bytes([c]) + stream.read(4))
-                print('COL', col)
-                # values are {c}\x00\x00\x{i*10:02x}\x00 for i = line_number starting from 1
-                # count is shared in both (e.g can be \x02\..x0a then \x05\..x14)
+                position = escape(stream.read(4))
                 yield b'\n' if c == 2 else b'\n~~~\n'
+                yield position
                 continue
             if c in (3, 4):
                 yield escape(bytes([c]) + stream.read(1))
@@ -38,9 +38,11 @@ def escape_bytes(data):
                 skip = 0
                 if a & 0x80:
                     skip += 2
-                if a & 0x40:
+                elif a & 0x40:
                     skip += 8
-                yield escape(bytes([a, c]) + stream.read(skip))
+                elif a & 0xC0:
+                    skip += 10
+                yield escape(bytes([c, a]) + stream.read(skip))
                 continue
             if c in (7, 8, 9):
                 yield escape(bytes([c]))
@@ -56,86 +58,78 @@ def escape_bytes(data):
             yield bytes([c])
 
 
-text_reps = [('"', '`'), ('\t', '|~t~|'), ('\r', '|~r~|')]
+text_reps = [('\t', '|~t~|'), ('\r', '|~r~|')]
 bin_rep = [(chr(i), f'\\x{i:02x}') for i in itertools.chain(range(10), [18])]
 
 
-def extract_texts(sources):
+def reencode(text):
+    escaped = replace_many(
+        text,
+        (b'\n~~~\n', b'|~~~|'),
+        (b'\n', b'|~$~|'),
+        (b'|~r~|', b'\r'),
+        (b'|~t~|', b'\t'),
+    )
+    breaked = b''.join(build_line_breaks(escaped))
+    return b''.join(
+        encode_seq(i, seq)
+        for i, seq in enumerate(
+            breaked.split(b'\\x'),
+        )
+    )
+
+
+def extract_texts(sources, verify=True):
     text_line_data = defaultdict(dict)
     for lang, texts in sources.items():
         for idx, (offset, size, line_data) in texts.items():
             text_line_data[idx][lang] = None
             if len(line_data) > 18 and line_data[18] not in {0, ord(b'@'), 4}:
+                # print('LINEDATA', list(line_data[:18]), line_data[18:])
                 escaped = b''.join(escape_bytes(line_data[18:]))
-                # assert aaa == line_data[18:], (aaa, line_data[18:])
                 # TODO read and replace line
                 text = replace_many(
                     escaped.decode('utf-8', errors='surrogateescape'),
                     *text_reps,
                     *bin_rep,
-                )  # , ('\n', '|~$~|'))
-                # if Path(source.name).suffix == '.ISR':
-                #     text = '\n'.join(x[::-1] for x in replace_many(text, *qwerty.items()).split('\n'))
+                )
                 text_line_data[idx][lang] = text.encode(
                     'utf-8',
                     errors='surrogateescape',
                 )
-                # print(
-                #     basename,
-                #     source,
-                #     binascii.hexlify(line_data[:18]).decode(),
-                #     f'"{text}"',
-                #     sep='\t',
-                #     file=out,
-                # )
+
+                if verify:
+                    # when reading tsv file, escaped double quotes are converted
+                    escaped = text_line_data[idx][lang]
+                    encoded = reencode(escaped)
+                    assert line_data[18:].startswith(encoded), (
+                        line_data[18:-2],
+                        encoded,
+                    )
+
     yield from text_line_data.values()
 
 
 def build_line_breaks(lines):
-    num = 10
     while True:
-        two, cont2 = '', lines
-        five, cont5 = '', lines
+        two, cont2 = None, lines
+        five, cont5 = None, lines
         if b'|~$~|' in lines:
             two, cont2 = lines.split(b'|~$~|', maxsplit=1)
         if b'|~~~|' in lines:
             five, cont5 = lines.split(b'|~~~|', maxsplit=1)
 
-        if not two and not five:
+        if two is None and five is None:
             yield lines
             return
 
-        if two and (not five or len(two) < len(five)):
-            yield two + f'\\x02\\x00\\x00\\x{num:02x}\\x00'.encode('ascii')
+        if two is not None and (five is None or len(two) < len(five)):
+            yield two + b'\\x02'
             lines = cont2
         else:
-            yield five + f'\\x05\\x00\\x00\\x{num:02x}\\x00'.encode('ascii')
+            assert five is not None
+            yield five + b'\\x05'
             lines = cont5
-        num += 10
-        # two, cont2 = lines.split('|~~~|', maxsplit=1)
-        # print(lines + '\n\n')
-        # two = lines.find('|~$~|')
-        # five = lines.find('|~~~|')
-        # if two < 0 and five < 0:
-        #     print('DONE', lines)
-        #     yield lines
-        #     return
-        # print(two, five)
-        # if two < five or five < 0:
-        #     yield lines[:two] + f'\\x02\\x00\\x00\\x{num:02x}\\x00'
-        #     print('TWO', lines[:two])
-        #     lines = lines[two + 5:]
-        # else:
-        #     yield lines[:five] + f'\\x05\\x00\\x00\\x{num:02x}\\x00'
-        #     print('FIVE', lines[:five])
-        #     lines = lines[five + 5:]
-        # num += 10
-
-
-bump_lets = zip(range(ord('א'), ord('ת') + 1), range(ord('@'), ord('Z') + 1))
-bump_lets = [(chr(c), chr(r)) for c, r in bump_lets]
-# print(bump_lets)
-# exit(1)
 
 
 def replace_texts(lines, texts, lang):
@@ -146,21 +140,7 @@ def replace_texts(lines, texts, lang):
             and line_data[18] not in {0, ord(b'@'), 4}
             and escaped is not None
         ):
-            escaped = replace_many(
-                escaped,
-                (b'\n~~~\n', b'|~~~|'),
-                (b'\n', b'|~$~|'),
-                (b'`', b'"'),
-                (b'|~t~|', b'\t'),
-            )
-            breaked = b''.join(build_line_breaks(escaped))
-            # breaked = replace_many(breaked, *bump_lets)
-            encoded = b''.join(
-                encode_seq(i, seq)
-                for i, seq in enumerate(
-                    breaked.split(b'\\x'),
-                )
-            )
+            encoded = reencode(escaped)
             # assert line_data[18:].startswith(encoded), (line_data[18:-2], encoded)
             line_data = line_data[:18] + encoded + b'\x01\x00'
         yield offset, size, line_data

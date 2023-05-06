@@ -24,6 +24,11 @@ def encrypt_texts(crypts, lines):
         yield text
 
 
+def escape_quotes(text):
+    assert '""' not in text, text
+    return text.replace('"', '""')
+
+
 def decode(game, patterns, texts_dir, crypts):
     open_files = set()
     for pattern, entry in game.search(patterns):
@@ -42,7 +47,10 @@ def decode(game, patterns, texts_dir, crypts):
             for texts in parse(game, entry):
                 print(
                     entry.name,
-                    *(f'"{decrypt(crypts, texts, lang)}"' for lang in LANGS),
+                    *(
+                        f'"{escape_quotes(decrypt(crypts, texts, lang))}"'
+                        for lang in LANGS
+                    ),
                     sep='\t',
                     file=out,
                 )

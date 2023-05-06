@@ -27,20 +27,29 @@ def compose(
         langs.remove('FILE')
         for pattern, entry in game.search([basename]):
             texts = get_original_texts(game, entry)
+            available_langs = [lang for lang in langs if not empty_lang(group, lang)]
+            backup = {
+                lang: lang
+                if lang in texts
+                # else 'DAT'
+                else next((alang for alang in available_langs if alang != lang))
+                for lang in available_langs
+            }
             new_texts = {
                 lang: dict(
                     enumerate(
-                        replace_texts(iter(group), texts.get(lang, texts['DAT']), lang)
+                        replace_texts(
+                            iter(group), texts[backup[lang]], lang
+                        )
                     )
                 )
-                for lang in langs
-                if not empty_lang(group, lang)
+                for lang in available_langs
             }
 
             for lang, lang_text in new_texts.items():
                 if lang == 'INT' and 'INT' not in texts:
                     continue
-                texts_data = texts.get(lang, texts['DAT'])
+                texts_data = texts[backup[lang]]
                 with io.BytesIO() as lang_out:
                     save_lang_file(lang_out, lang_text)
                     new_texts_data = lang_out.getvalue()
@@ -54,7 +63,7 @@ def compose(
                         (
                             f'{Path(tfname).stem}.{lang}'
                             if lang in texts
-                            else f'{Path(tfname).stem}.DAT'
+                            else f'{Path(tfname).stem}.{backup[lang]}'
                         ),
                         new_texts_data,
                         f'{Path(tfname).stem}.{lang}',

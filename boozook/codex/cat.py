@@ -47,13 +47,16 @@ def compose(
                         if enc is None:
                             output.seek(LINE_SIZE, io.SEEK_CUR)
                             continue
+                        enc = enc.replace(b'~', b'\0')
                         towrite = enc.ljust(LINE_SIZE, b'\0')
                         assert len(towrite) == LINE_SIZE, len(towrite)
                         output.write(towrite)
 
+                # force write at current stream position (fill with zeros)
+                output.write(b'\0')
                 game.patch(
                     entry.name,
-                    output.getvalue(),
+                    output.getvalue()[:-1],
                 )
 
 
@@ -71,7 +74,9 @@ def write_parsed(
                 line = f.read(LINE_SIZE)
                 if not line:
                     break
-                line, rest = line.split(b'\0', maxsplit=1)
-                assert set(rest) == {0} or set(rest) == {0, ord(' ')}, rest
+                # line, rest = line.split(b'\0', maxsplit=1)
+                # assert set(rest) == {0} or set(rest) == {0, ord(' ')}, rest
+                assert b'~' not in line, line
+                line = line.replace(b'\0', b'~')
                 text_line[num][lang.name] = line
         yield from text_line
