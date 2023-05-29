@@ -49,6 +49,11 @@ def compose(
                             continue
                         enc = enc.replace(b'~', b'\0')
                         towrite = enc.ljust(LINE_SIZE, b'\0')
+                        if sum(towrite[40:]) > 0:
+                            raise ValueError(
+                                'Non-null characters after 40 characters limit',
+                            )
+                        towrite = towrite[:40]
                         assert len(towrite) == LINE_SIZE, len(towrite)
                         output.write(towrite)
 
