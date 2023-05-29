@@ -2,8 +2,10 @@ from collections import defaultdict
 import io
 import itertools
 import struct
+from boozook.codex.base import write_uint16_le
 
 from boozook.codex.stk import replace_many
+from boozook.totfile import reads_uint16le
 
 
 def escape(seq):
@@ -26,9 +28,9 @@ def escape_bytes(data):
                 yield escape(bytes([c]) + rest)
                 continue
             if c in (2, 5):
-                position = escape(stream.read(4))
+                xpos, ypos = reads_uint16le(stream), reads_uint16le(stream)
                 yield b'\n' if c == 2 else b'\n~~~\n'
-                yield position
+                yield f'{xpos}@{ypos}\n'.encode('ascii')
                 continue
             if c in (3, 4):
                 yield escape(bytes([c]) + stream.read(1))
@@ -111,6 +113,7 @@ def extract_texts(sources, verify=True):
 
 
 def build_line_breaks(lines):
+    xpos, ypos = 0, 0
     while True:
         two, cont2 = None, lines
         five, cont5 = None, lines
@@ -125,11 +128,20 @@ def build_line_breaks(lines):
 
         if two is not None and (five is None or len(two) < len(five)):
             yield two + b'\\x02'
-            lines = cont2
+            pos, *lines = cont2.split(b'|~$~|', maxsplit=1)
         else:
             assert five is not None
             yield five + b'\\x05'
-            lines = cont5
+            pos, *lines = cont5.split(b'|~$~|', maxsplit=1)
+        try:
+            xpos, ypos = (int(x) for x in pos.split(b'@', maxsplit=1))
+        except ValueError:
+            # Position is omitted, assume next multiple of 10 for ypos
+            xpos, ypos = xpos, ypos + 10
+            lines = b'|~$~|'.join([pos, *lines])
+        else:
+            lines = b'|~$~|'.join([*lines])
+        yield write_uint16_le(xpos) + write_uint16_le(ypos)
 
 
 def replace_texts(lines, texts, lang):
