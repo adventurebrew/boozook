@@ -49,7 +49,6 @@ def compose(
             for lang, lang_text in new_texts.items():
                 if lang == 'INT' and 'INT' not in texts:
                     continue
-                texts_data = texts[backup[lang]]
                 with io.BytesIO() as lang_out:
                     save_lang_file(lang_out, lang_text)
                     new_texts_data = lang_out.getvalue()
@@ -71,6 +70,10 @@ def compose(
 
                 else:
                     orig_tot = bytearray(entry.read_bytes())
+                    with io.BytesIO() as lang_out:
+                        save_lang_file(lang_out, texts[backup[lang]])
+                        texts_data = lang_out.getvalue()
+                    assert texts_data in orig_tot, orig_tot
                     orig_tot = orig_tot.replace(texts_data, new_texts_data)
                     resoff = fix_value(read_uint32le(orig_tot[52:]), 0xFFFFFFFF, 0)
                     if resoff != 0:
