@@ -1,10 +1,15 @@
 import io
 import itertools
 from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
 from boozook.archive import GameBase
 
 from pakal.archive import ArchivePath
 from boozook.codex.stk import unpack_chunk
+from boozook.codex.stk_compress import pack_content
 from boozook.grid import convert_to_pil_image
 
 from boozook.totfile import read_tot, reads_uint32le
@@ -239,24 +244,142 @@ def parse(game: GameBase, entry: ArchivePath, target: str | Path):
                     print('UNPACK', entry.name, idx)
                     im = unpack_sprite(data, width, height)
 
-                    if im:
-                        enc = pack_sprite(im)
-                        assert enc == data, (enc, data)
-                        assert unpack_sprite(enc, width, height) == im
+                image_path = target / f'{entry.stem}.{ext}_{idx}.png'
                 if width & height:
                     bim = convert_to_pil_image(im, size=(width, height))
                     bim.putpalette(palette)
-                    bim.save(target / f'{entry.name}_{idx}.png')
-                    print(target / f'{entry.name}_{idx}.png')
+                    bim.save(image_path)
+                    print(image_path)
                 elif len(data) == 768:
                     print('PALETTE', entry.name, idx)
                     palette = [(x << 2) % 256 for x in data]
                     if bim:
                         bim.putpalette(palette)
-                        bim.save(target / f'{entry.name}_{idx}.png')
+                        bim.save(image_path)
                 else:
                     print(len(data), len(im))
 
 
+def compress_sprite(data):
+    data = bytes(data)
+    out = b'\x01\x02\x01' + pack_content(data)
+
+    size = int.from_bytes(out[3:7], byteorder='little', signed=False)
+    reunpacked = bytes(
+        uncompress_sprite(
+            out[2:],
+            size,
+            1,
+        )
+    )
+    if data != reunpacked:
+        print(data[:100])
+        print(reunpacked[:100])
+        print(reunpacked[:100] == data[:100])
+    assert data == reunpacked
+
+    return bytes(out)
+
+
 def compose(game: GameBase, entry: ArchivePath, target: str | Path):
-    pass
+    target = Path(target)
+    reses = {}
+    with entry.open('rb') as f:
+        _, _, _, res_data = read_tot(f)
+        if res_data:
+            reses['TOT'] = res_data
+
+    for ext_pattern, ext_entry in game.search([entry.with_suffix('.EXT').name]):
+        res_data = ext_entry.read_bytes()
+        reses['EXT'] = res_data
+
+    if not res_data:
+        return
+
+    assert res_data
+
+    for ext, res_data in reses.items():
+
+        outfile = bytearray()
+        outdata = bytearray()
+
+        if ext == 'TOT':
+            with entry.open('rb') as f:
+                data = f.read()
+            outfile += data.replace(res_data, b'')
+            assert outfile + res_data == data
+
+        outfile += res_data[:3]
+
+        with io.BytesIO(res_data) as f:
+            items = list(read_ext_table(f))
+            table_off = f.tell()
+
+            for idx, (offset, size, width, height, packed) in enumerate(items):
+                data = None
+                if offset < 0:
+                    raise ValueError('commun not supported for inject')
+                else:
+                    assert f.tell() == offset + table_off, (
+                        f.tell(),
+                        offset + table_off,
+                    )
+                    if packed:
+                        raise ValueError('packed not yet supported')
+                    else:
+                        data = f.read(size)
+
+                assert data is not None
+                offset = len(outdata)
+                inject_pic = target / f'{entry.stem}.{ext}_{idx}.png'
+                if not inject_pic.exists() or not width & height:
+                    outdata += data
+                    outfile += b''.join(
+                        [
+                            offset.to_bytes(4, byteorder='little', signed=False),
+                            len(data).to_bytes(2, byteorder='little', signed=False),
+                            width.to_bytes(2, byteorder='little', signed=False),
+                            height.to_bytes(2, byteorder='little', signed=False),
+                        ]
+                    )
+                    continue
+
+                im_data = np.asarray(Image.open(inject_pic)).ravel()
+                im_type = None
+
+                if data[:2] == b'\x01\x02':
+                    im_type = 'UNCOMPRESS'
+                    print(im_type, entry.name, idx)
+                    im = uncompress_sprite(data[2:], width, height)
+
+                else:
+                    im_type = 'UNPACK'
+                    print(im_type, entry.name, idx)
+                    im = unpack_sprite(data, width, height)
+
+                print(ext, inject_pic, width, height)
+
+                if not np.array_equal(im, im_data):
+                    if len(im_data) != width * height:
+                        raise ValueError(len(im_data), width * height)
+                    data = {
+                        'UNCOMPRESS': compress_sprite,
+                        'UNPACK': pack_sprite,
+                    }[im_type](im_data)
+
+                outdata += data
+                outfile += b''.join(
+                    [
+                        offset.to_bytes(4, byteorder='little', signed=False),
+                        len(data).to_bytes(2, byteorder='little', signed=False),
+                        width.to_bytes(2, byteorder='little', signed=False),
+                        height.to_bytes(2, byteorder='little', signed=False),
+                    ]
+                )
+
+        game.patch(f'{entry.stem}.{ext}', outfile + outdata)
+
+        # outdir = Path('attempt')
+        # os.makedirs(outdir, exist_ok=True)
+        # with open(outdir / f'{entry.stem}.{ext}', 'wb') as out:
+        #     out.write(outfile + outdata)
