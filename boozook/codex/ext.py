@@ -245,7 +245,7 @@ def parse(game: GameBase, entry: ArchivePath, target: str | Path):
                     im = unpack_sprite(data, width, height)
 
                 image_path = target / f'{entry.stem}.{ext}_{idx}.png'
-                if width & height:
+                if width and height:
                     bim = convert_to_pil_image(im, size=(width, height))
                     bim.putpalette(palette)
                     bim.save(image_path)
@@ -349,7 +349,7 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
                 assert data is not None
                 offset = len(outdata)
                 inject_pic = target / f'{entry.stem}.{ext}_{idx}.png'
-                if not inject_pic.exists() or not width & height:
+                if not (inject_pic.exists() and width and height):
                     if packed:
                         data = orig_data  # pack_content(data)
                     outdata += data
