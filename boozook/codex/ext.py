@@ -318,6 +318,15 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
             for idx, (offset, size, width, height, packed) in enumerate(items):
                 data = None
                 if offset < 0:
+                    outfile += b''.join(
+                        [
+                            offset.to_bytes(4, byteorder='little', signed=True),
+                            size.to_bytes(2, byteorder='little', signed=False),
+                            (width | 0x8000 * int(packed)).to_bytes(2, byteorder='little', signed=False),
+                            height.to_bytes(2, byteorder='little', signed=False),
+                        ]
+                    )
+                    continue
                     raise ValueError('commun not supported for inject')
                 else:
                     assert f.tell() == offset + table_off, (
@@ -325,7 +334,15 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
                         offset + table_off,
                     )
                     if packed:
-                        raise ValueError('packed not yet supported')
+                        if ext == 'TOT':
+                            continue
+
+                        pos = f.tell()
+                        uncompressed_size = reads_uint32le(f)
+                        data = unpack_chunk(f, uncompressed_size)
+
+                        f.seek(pos)
+                        orig_data = f.read(size)
                     else:
                         data = f.read(size)
 
@@ -333,12 +350,14 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
                 offset = len(outdata)
                 inject_pic = target / f'{entry.stem}.{ext}_{idx}.png'
                 if not inject_pic.exists() or not width & height:
+                    if packed:
+                        data = orig_data  # pack_content(data)
                     outdata += data
                     outfile += b''.join(
                         [
-                            offset.to_bytes(4, byteorder='little', signed=False),
+                            offset.to_bytes(4, byteorder='little', signed=True),
                             len(data).to_bytes(2, byteorder='little', signed=False),
-                            width.to_bytes(2, byteorder='little', signed=False),
+                            (width | 0x8000 * int(packed)).to_bytes(2, byteorder='little', signed=False),
                             height.to_bytes(2, byteorder='little', signed=False),
                         ]
                     )
@@ -367,12 +386,14 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
                         'UNPACK': pack_sprite,
                     }[im_type](im_data)
 
+                if packed:
+                    data = pack_content(data)
                 outdata += data
                 outfile += b''.join(
                     [
-                        offset.to_bytes(4, byteorder='little', signed=False),
+                        offset.to_bytes(4, byteorder='little', signed=True),
                         len(data).to_bytes(2, byteorder='little', signed=False),
-                        width.to_bytes(2, byteorder='little', signed=False),
+                        (width | 0x8000 * int(packed)).to_bytes(2, byteorder='little', signed=False),
                         height.to_bytes(2, byteorder='little', signed=False),
                     ]
                 )
