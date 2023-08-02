@@ -29,8 +29,11 @@ def extract(stream: IO[bytes]) -> Iterator[Tuple[str, STKFileEntry]]:
         file_name = raw_fname.split(b'\0')[0].decode()
         size = read_uint32_le(stream)
         offset = read_uint32_le(stream)
-        assert offset % 2 == 0, offset
+        # assert offset % 2 == 0, offset
         compression = stream.read(1) != b'\00'
+        if file_name.upper().endswith('.0OT'):
+            compression = 2
+            file_name = file_name.replace('.0OT', '.TOT')
 
         # Replacing cyrillic characters
         reps = ('\x85', 'E'), ('\x8A', 'K'), ('\x8E', 'O'), ('\x91', 'C'), ('\x92', 'T')
@@ -78,13 +81,34 @@ def unpack_chunk(stream: IO[bytes], size: int) -> bytes:
     return bytes(result)
 
 
+def unpack_chunks(view):
+    chunk_size = 0
+    data = bytearray()
+    uncompressed_size = 0
+    while chunk_size != 0xFFFF:
+        pos = view.tell()
+        chunk_size = read_uint16_le(view)
+        real_size = read_uint16_le(view)
+        uncompressed_size += real_size
+
+        assert chunk_size >= 4
+        view.read(2)
+        data += unpack_chunk(view, real_size)
+        if chunk_size != 0xFFFF:
+            assert view.tell() == pos + chunk_size + 2
+    assert len(data) == uncompressed_size
+    return bytes(data)
+
+
 def unpack(stream: IO[bytes], offset: int, size: int, compression: int) -> IO[bytes]:
     stream.seek(offset)
     view = cast(IO[bytes], PartialStreamView(stream, size))
     if not compression:
         return view
+    if compression == 2:
+        return io.BytesIO(unpack_chunks(view))
     uncompressed_size = read_uint32_le(view)
-    return io.BytesIO(unpack_chunk(stream, uncompressed_size))
+    return io.BytesIO(unpack_chunk(view, uncompressed_size))
 
 
 class STKArchive(BaseArchive[STKFileEntry]):
