@@ -154,11 +154,12 @@ def recompress_archive(archive, patches, target, force_recompress=False):
             if dup:
                 index[file.name] = dup
                 continue
-            index[file.name] = STKFileEntry(output.tell(), len(content), compression)
+            fname = file.name if compression != 2 else file.with_suffix('.0OT').name
+            index[fname] = STKFileEntry(output.tell(), len(content), compression)
             if len(content) % 2:
                 content += b'\0'
             output.write(content)
-            orig_offs[archive.index[file.name]] = index[file.name]
+            orig_offs[archive.index[file.name]] = index[fname]
         for fname, content in patches.items():
             assert fname not in index, (list(index.keys()), list(patches.keys()))
             index[fname] = STKFileEntry(output.tell(), len(content), False)
