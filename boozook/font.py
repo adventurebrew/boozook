@@ -16,14 +16,14 @@ def decode(game, patterns, fonts_dir):
         parse(game, entry, fonts_dir)
 
 
-def encode(game, patterns, texts_dir):
+def encode(game, patterns, fonts_dir):
     for pattern, entry in game.search(patterns):
         _, _, compose = patterns[pattern]
         compose(game, entry, fonts_dir)
     game.rebuild()
 
 
-if __name__ == '__main__':
+def menu():
     import argparse
 
     parser = argparse.ArgumentParser(description='extract pak archive')
@@ -34,15 +34,23 @@ if __name__ == '__main__':
         action='store_true',
         help='create modifed game resource with the changes',
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main(gamedir, rebuild):
     patterns = FONT_PATTERNS
 
     fonts_dir = Path('fonts')
     os.makedirs(fonts_dir, exist_ok=True)
 
-    game = archive.open_game(args.directory)
-    if not args.rebuild:
+    game = archive.open_game(gamedir)
+    if not rebuild:
         decode(game, patterns, fonts_dir)
     else:
         encode(game, patterns, fonts_dir)
+
+
+if __name__ == '__main__':
+    args = menu()
+
+    main(args.directory, args.rebuild)

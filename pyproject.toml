@@ -6,14 +6,16 @@ authors = ["BLooperZ <blooperz@users.noreply.github.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.13"
 pakal = {git = "https://github.com/adventurebrew/pakal.git"}
 numpy = "^1.24.2"
 pillow = "^9.5.0"
+prompt-toolkit = "^3.0.39"
 
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
+pyinstaller = "^5.13.0"
 
 [build-system]
 requires = ["poetry-core"]

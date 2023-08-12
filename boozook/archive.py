@@ -129,7 +129,7 @@ class DirectoryBackedArchive(MutableMapping[str, bytes]):
         self._popped.add(key)
 
 
-if __name__ == '__main__':
+def menu():
     import argparse
 
     parser = argparse.ArgumentParser(description='extract pak archive')
@@ -149,14 +149,16 @@ if __name__ == '__main__':
         action='store_true',
         help='recompress game archives',
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main(gamedir, patterns=ARCHIVE_PATTERNS, extract=True, compress=False):
     extract_dir = Path('extracted')
     os.makedirs(extract_dir, exist_ok=True)
 
-    game = open_game(args.directory)
-    if args.extract:
-        for pattern, entry in game.search(args.patterns):
+    game = open_game(gamedir)
+    if extract:
+        for pattern, entry in game.search(patterns):
             base_archive = entry.name
             ext_archive = extract_dir / base_archive
             os.makedirs(ext_archive, exist_ok=True)
@@ -167,10 +169,10 @@ if __name__ == '__main__':
                     #     file.name,
                     #     int(archive.index[file.name].compression),
                     # )
-    if args.compress:
+    if compress:
         patch_dir = Path('patch')
         os.makedirs(patch_dir, exist_ok=True)
-        for pattern, entry in game.search(args.patterns):
+        for pattern, entry in game.search(patterns):
             base_archive = entry.name
             ext_archive = extract_dir / base_archive
             if ext_archive.is_dir():
@@ -180,3 +182,9 @@ if __name__ == '__main__':
                 )
                 with stk.open(entry) as archive:
                     recompress_archive(archive, patches, patch_dir / entry.name)
+
+
+if __name__ == '__main__':
+    args = menu()
+
+    main(args.directory, args.patterns, args.extract, args.compress)

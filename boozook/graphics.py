@@ -23,7 +23,7 @@ def encode(game, patterns, target):
     game.rebuild()
 
 
-if __name__ == '__main__':
+def menu():
     import argparse
 
     parser = argparse.ArgumentParser(description='extract pak archive')
@@ -34,15 +34,23 @@ if __name__ == '__main__':
         action='store_true',
         help='create modifed game resource with the changes',
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main(gamedir, rebuild):
     patterns = GRAPHICS_PATTERNS
 
     target = Path('graphics')
     os.makedirs(target, exist_ok=True)
 
-    game = archive.open_game(args.directory)
-    if not args.rebuild:
+    game = archive.open_game(gamedir)
+    if not rebuild:
         decode(game, patterns, target)
     else:
         encode(game, patterns, target)
+
+
+if __name__ == '__main__':
+    args = menu()
+
+    main(args.directory, args.rebuild)

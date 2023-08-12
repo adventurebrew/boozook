@@ -68,7 +68,7 @@ def encode(game, patterns, texts_dir, crypts):
     game.rebuild()
 
 
-if __name__ == '__main__':
+def menu():
     import argparse
 
     parser = argparse.ArgumentParser(description='extract pak archive')
@@ -91,8 +91,10 @@ if __name__ == '__main__':
         action='store_true',
         help='replace text by keyboard key position',
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main(gamedir, rebuild, allowed=(), keys=False):
     patterns = TEXT_PATTERNS
 
     texts_dir = Path('texts')
@@ -102,11 +104,22 @@ if __name__ == '__main__':
     decoders['ISR'] = CodePageEncoder('windows-1255')
     decoders['KOR'] = CodePageEncoder('utf-8', errors='surrogateescape')
 
-    if args.keys:
+    if keys:
         decoders['ISR'] = HebrewKeyReplacer
 
-    game = archive.open_game(args.directory, allowed_patches=args.allowed or ())
-    if not args.rebuild:
+    game = archive.open_game(gamedir, allowed_patches=allowed or ())
+    if not rebuild:
         decode(game, patterns, texts_dir, decoders)
     else:
         encode(game, patterns, texts_dir, decoders)
+
+
+if __name__ == '__main__':
+    args = menu()
+
+    main(
+        args.directory,
+        args.rebuild,
+        allowed=args.allowed,
+        keys=args.keys,
+    )
