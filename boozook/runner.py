@@ -216,12 +216,7 @@ def main():
 
     for resource, advanced in args.resources.items():
         if resource == 'archive':
-            archive.main(
-                gamedir,
-                extract=not args.rebuild,
-                compress=args.rebuild,
-                **advanced,
-            )
+            archive.main(gamedir, args.rebuild, **advanced)
         elif resource == 'fonts':
             font.main(gamedir, args.rebuild, **advanced)
         elif resource == 'texts':

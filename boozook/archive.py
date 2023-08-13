@@ -129,6 +129,35 @@ class DirectoryBackedArchive(MutableMapping[str, bytes]):
         self._popped.add(key)
 
 
+def extract_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
+    for pattern, entry in game.search(patterns):
+        base_archive = entry.name
+        ext_archive = extract_dir / base_archive
+        os.makedirs(ext_archive, exist_ok=True)
+        with stk.open(entry) as archive:
+            for file in archive:
+                (ext_archive / file.name).write_bytes(file.read_bytes())
+                # print(
+                #     file.name,
+                #     int(archive.index[file.name].compression),
+                # )
+
+
+def rebuild_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
+    patch_dir = Path('patch')
+    os.makedirs(patch_dir, exist_ok=True)
+    for pattern, entry in game.search(patterns):
+        base_archive = entry.name
+        ext_archive = extract_dir / base_archive
+        if ext_archive.is_dir():
+            patches = DirectoryBackedArchive(
+                ext_archive,
+                allowed={x.name for x in ext_archive.iterdir()},
+            )
+            with stk.open(entry) as archive:
+                recompress_archive(archive, patches, patch_dir / entry.name)
+
+
 def menu():
     import argparse
 
@@ -141,50 +170,30 @@ def menu():
         help='game directory with files to extract',
     )
     parser.add_argument(
-        '--extract', '-e', action='store_true', help='extract game archives'
-    )
-    parser.add_argument(
-        '--compress',
-        '-c',
+        '--rebuild',
+        '-r',
         action='store_true',
-        help='recompress game archives',
+        help='create modifed game resource with the changes',
     )
     return parser.parse_args()
 
 
-def main(gamedir, patterns=ARCHIVE_PATTERNS, extract=True, compress=False):
+def main(
+    gamedir,
+    rebuild,
+    patterns=ARCHIVE_PATTERNS,
+):
     extract_dir = Path('extracted')
     os.makedirs(extract_dir, exist_ok=True)
 
     game = open_game(gamedir)
-    if extract:
-        for pattern, entry in game.search(patterns):
-            base_archive = entry.name
-            ext_archive = extract_dir / base_archive
-            os.makedirs(ext_archive, exist_ok=True)
-            with stk.open(entry) as archive:
-                for file in archive:
-                    (ext_archive / file.name).write_bytes(file.read_bytes())
-                    # print(
-                    #     file.name,
-                    #     int(archive.index[file.name].compression),
-                    # )
-    if compress:
-        patch_dir = Path('patch')
-        os.makedirs(patch_dir, exist_ok=True)
-        for pattern, entry in game.search(patterns):
-            base_archive = entry.name
-            ext_archive = extract_dir / base_archive
-            if ext_archive.is_dir():
-                patches = DirectoryBackedArchive(
-                    ext_archive,
-                    allowed={x.name for x in ext_archive.iterdir()},
-                )
-                with stk.open(entry) as archive:
-                    recompress_archive(archive, patches, patch_dir / entry.name)
+    if not rebuild:
+        extract_archive(game, extract_dir, patterns=patterns)
+    else:
+        rebuild_archive(game, extract_dir, patterns=patterns)
 
 
 if __name__ == '__main__':
     args = menu()
 
-    main(args.directory, args.patterns, args.extract, args.compress)
+    main(args.directory, args.rebuild, args.patterns)
