@@ -9,7 +9,7 @@ from boozook.codex import stk
 from boozook.codex.stk_compress import recompress_archive
 
 
-ARCHIVE_PATTERNS = ('*.STK',)
+ARCHIVE_PATTERNS = ('*.STK','*.ITK','*.LTK','*.JTK',)
 
 
 def game_search(base_dir, patterns=('*',), patches=(), archives=ARCHIVE_PATTERNS):
