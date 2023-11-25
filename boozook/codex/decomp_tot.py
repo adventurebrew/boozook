@@ -314,7 +314,7 @@ def fparam(name, *params):
 def o1_callSub(scf):
     offset = read_uint16le(scf.read(2))
     printl('o1_callSub', offset)
-    functions.append(offset)
+    ctx['functions'].append(offset)
 
 
 def o2_assign(scf):
@@ -353,7 +353,7 @@ def video_o2_loadMult(scf):
         _skip = scf.read(1)
 
     data = read_ext_item(
-        ext_items, iid - 30000, ext_data, com_entry and com_data[com_entry.name]
+        ctx['ext_items'], iid - 30000, ctx['ext_data'], ctx['com_entry'] and ctx['com_data'][ctx['com_entry'].name]
     )
 
     with io.BytesIO(data) as stream:
@@ -969,16 +969,24 @@ def func_block(scf, ret_flag):
     ctx['indent'] -= 1
 
 
+def text_hint(ctx, textid):
+    res = ctx['texts'][textid]
+    lang = ctx.get('lang')
+    if lang is not None:
+        return res[lang]
+    return res
+
+
 def o1_printTotText(scf):
     textid = reads_uint16le(scf)
-    printl('o1_printTotText', textid, '//', texts[textid])
+    printl('o1_printTotText', textid, '//', text_hint(ctx, textid))
 
 
 def o2_getTotTextItemPart(scf):
     textid = reads_uint16le(scf)
     var_string = read_var_index(scf)
     part = read_expr(scf)
-    printl(f'{var_string} = o2_getTotTextItemPart', textid, part, '//', texts[textid])
+    printl(f'{var_string} = o2_getTotTextItemPart', textid, part, '//', text_hint(ctx, textid))
 
 
 gob1_ops = {
@@ -1153,39 +1161,66 @@ def read_ext_item(items, index, ext_data, com_data):
                 return stream.read(size)
 
 
-if __name__ == '__main__':
+def menu():
     import argparse
 
     parser = argparse.ArgumentParser(description='extract pak archive')
     parser.add_argument('directory', help='game directory to work on')
-    parser.add_argument('totfile', help='script to decompile')
+    parser.add_argument(
+        'totfiles',
+        nargs='*',
+        default=['*.TOT'],
+        help='script to decompile',
+    )
+    parser.add_argument(
+        '--lang',
+        '-l',
+        help='language to focus on message hints',
+    )
     parser.add_argument(
         '--keys',
         '-k',
         action='store_true',
         help='replace text by keyboard key position',
     )
+    parser.add_argument(
+        '--exported',
+        '-e',
+        action='store_true',
+        help='only decompile exported functions',
+    )
 
-    args = parser.parse_args()
 
-    game = archive.open_game(args.directory)
+    return parser.parse_args()
+
+
+def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
+    game = archive.open_game(gamedir)
 
     decoders = defaultdict(lambda: CodePageEncoder('cp850'))
     decoders['ISR'] = CodePageEncoder('windows-1255')
     decoders['KOR'] = CodePageEncoder('utf-8', errors='surrogateescape')
 
-    if args.keys:
+    if keys:
         decoders['ISR'] = HebrewKeyReplacer
+
+    if rebuild:
+        raise ValueError('Recompiler was not implemented yet')
 
     com_data = {}
     com_entry = None
     for com_pattern, com_entry in game.search(['COMMUN.EX*']):
         com_data[com_entry.name] = com_entry.read_bytes()
 
+    ctx['com_data'] = com_data
+    ctx['com_entry'] = com_entry
+
     script_dir = Path('scripts')
     os.makedirs(script_dir, exist_ok=True)
 
-    for pattern, entry in game.search([args.totfile]):
+    for pattern, entry in game.search(scripts):
+
+        print(f'Decompiling {entry.name}...')
         texts_data = None
         with entry.open('rb') as tot_file:
             script, functions, texts_data, res_data = read_tot(tot_file)
@@ -1194,24 +1229,26 @@ if __name__ == '__main__':
 
         for ext_pattern, ext_entry in game.search([entry.with_suffix('.EXT').name]):
             with ext_entry.open('rb') as ext_file:
-                ext_items = list(read_ext_table(ext_file))
-                ext_data = ext_file.read()
+                ctx['ext_items'] = list(read_ext_table(ext_file))
+                ctx['ext_data'] = ext_file.read()
 
-        texts = dict(
+        ctx['texts'] = dict(
             enumerate(
                 {lang: decrypt(decoders, line, lang) for lang in line}
                 for line in tot.write_parsed(game, entry)
             )
         )
 
+        ctx['lang'] = lang
+
         # print(ext_items)
 
         # print(functions)
-        functions = [x for x in functions if x >= 128 and x != 0xFFFF]
+        ctx['functions'] = [x for x in functions if x >= 128 and x != 0xFFFF]
 
         def on_functions(scfa):
             seen = set()
-            for func in functions:
+            for func in ctx['functions']:
                 if func in seen:
                     continue
                 scfa.seek(func - 128)
@@ -1225,13 +1262,25 @@ if __name__ == '__main__':
         script_out = script_dir / f'{entry.name}.txt'
         with (script_out).open('w', encoding='utf-8') as outstream:
             with redirect_stdout(outstream):
-                print(functions)
+                print(ctx['functions'])
                 with io.BytesIO(script) as scfa:
-                    # works_on = on_functions(scfa)
-                    works_on = on_all_file(scfa)
+                    works_on = on_functions(scfa) if exported else on_all_file(scfa)
                     for _ in works_on:
                         ctx['offset'] = scfa.tell()
                         printl(f'sub_{scfa.tell() + 128} {{')
                         func_block(scfa, 2)
                         printl('}')
                         print()
+
+
+if __name__ == '__main__':
+    args = menu()
+
+    main(
+        args.directory,
+        False,
+        args.totfiles,
+        args.lang,
+        args.keys,
+        args.exported,
+    )

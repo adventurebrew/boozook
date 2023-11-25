@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, List, Optional, TypeVar, Union
 
 from prompt_toolkit.application import Application
@@ -19,12 +19,14 @@ class Option:
     label: Optional[str] = None
     selected: bool = False
     advanced: Optional[Callable[[], AdvancedT]] = None
+    default: dict = field(default_factory=dict)
 
 
 @dataclass
 class SelectedOption:
     key: str
     advanced: Optional[Callable[[], dict]] = None
+    default: dict = field(default_factory=dict)
 
 
 class SelectControl(FormattedTextControl):
@@ -80,6 +82,7 @@ class SelectControl(FormattedTextControl):
                         advanced=option.advanced
                         if option.key in self.advanced_keys
                         else None,
+                        default=option.default,
                     )
                     for option in self.options
                     if option.key in self.selected_keys
