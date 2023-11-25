@@ -10,12 +10,16 @@ python = ">=3.10,<3.13"
 pakal = {git = "https://github.com/adventurebrew/pakal.git"}
 numpy = "^1.24.2"
 pillow = "^9.5.0"
-prompt-toolkit = "^3.0.39"
+prompt-toolkit = "^3.0.41"
 
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
-pyinstaller = "^5.13.0"
+
+
+[tool.poetry.group.release.dependencies]
+pyinstaller = "^6.2.0"
+pip-licenses = "^4.3.3"
 
 [build-system]
 requires = ["poetry-core"]

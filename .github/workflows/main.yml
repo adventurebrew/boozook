@@ -1,0 +1,49 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Release Binary
+
+on:
+  push:
+    branches: [ organize ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+        - windows-latest
+        - ubuntu-latest
+        - macos-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.10.10
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+
+    - run: |
+        poetry install --only main,release --no-root
+        poetry build
+        poetry run pip download poetry-core -d dist
+        poetry run pip install --no-index --find-links=dist boozook
+        mv dist dist_old
+        poetry run pyinstaller --onefile -n boozook boozook/runner.py
+    # Optionally verify that it works (provided that it does not need user interaction)
+    - run: ./dist/boozook --help
+    - run: |
+          cp README.md ./dist/README.md
+          poetry run pip-licenses --from=all --format=plain-vertical --with-license-file --no-license-path --with-urls --with-description --output-file ./dist/LICENSE
+    - uses: actions/upload-artifact@v2
+      with:
+        name: boozook-${{ runner.os }}
+        path: dist/*
