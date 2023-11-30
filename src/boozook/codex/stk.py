@@ -1,3 +1,4 @@
+from datetime import datetime
 import io
 from contextlib import contextmanager
 from typing import IO, TYPE_CHECKING, AnyStr, Iterator, NamedTuple, Tuple, cast
@@ -21,6 +22,10 @@ class STK21FileEntry(NamedTuple):
     size: int
     compression: int
     uncompressed_size: int
+    modified: datetime
+    created: datetime
+    creator: str
+    unk: bytes
 
 
 def replace_many(s: AnyStr, *reps: Tuple[AnyStr, AnyStr]) -> AnyStr:
@@ -39,15 +44,17 @@ def extract_stk21(stream):
     for cpt in range(file_count):
         stream.seek(misc_offset + cpt * 61)
         filename_offset = read_uint32_le(stream)
-        stream.read(36)
+        modified = datetime.strptime(stream.read(14).decode(), '%d%m%Y%H%M%S')
+        created = datetime.strptime(stream.read(14).decode(), '%d%m%Y%H%M%S')
+        creator = stream.read(8).split(b'\0')[0].decode()
         size = read_uint32_le(stream)
         uncompressed_size = read_uint32_le(stream)
-        stream.read(5)
+        unk = stream.read(5)
         offset = read_uint32_le(stream)
         compression = read_uint32_le(stream)
         stream.seek(filename_offset)
         file_name = safe_readcstr(stream).decode()
-        yield file_name, STK21FileEntry(offset, size, compression, uncompressed_size)
+        yield file_name, STK21FileEntry(offset, size, compression, uncompressed_size, modified, created, creator, unk)
 
 
 def extract(stream: IO[bytes]) -> Iterator[Tuple[str, STKFileEntry]]:

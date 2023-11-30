@@ -160,9 +160,14 @@ def recompress_archive(archive, patches, target, force_recompress=False):
             index[fname] = (
                 STKFileEntry(output.tell(), len(content), compression)
                 if archive.version != 2.1
-                else STK21FileEntry(output.tell(), len(content), compression, uncompressed_size)
+                else archive.index[file.name]._replace(
+                    offset=output.tell(),
+                    size=len(content),
+                    compression=compression,
+                    uncompressed_size=uncompressed_size
+                )
             )
-            if len(content) % 2:
+            if len(content) % 2 and archive.version != 2.1:
                 content += b'\0'
             output.write(content)
             orig_offs[archive.index[file.name]] = index[fname]
@@ -171,9 +176,17 @@ def recompress_archive(archive, patches, target, force_recompress=False):
             index[fname] = (
                 STKFileEntry(output.tell(), len(content), False)
                 if archive.version != 2.1
-                else STK21FileEntry(output.tell(), len(content), compression, uncompressed_size)
+                else archive.index[file.name]._replace(
+                    offset=output.tell(),
+                    size=len(content),
+                    compression=False,
+                    uncompressed_size=uncompressed_size,
+                    # TODO: Allow setting modified date and creator
+                    modified=datetime.now(),
+                    creator='Boozook',
+                )
             )
-            if len(content) % 2:
+            if len(content) % 2 and archive.version != 2.1:
                 content += b'\0'
             output.write(content)
 
@@ -192,10 +205,14 @@ def recompress_archive(archive, patches, target, force_recompress=False):
                 misc += write_uint32_le(filename_offset)
                 names += fname.encode('ascii') + b'\0'
                 filename_offset += len(fname) + 1
-                misc += b'\0' * 36
+                misc += (
+                    entry.modified.strftime('%d%m%Y%H%M%S').encode('ascii')
+                    + entry.created.strftime('%d%m%Y%H%M%S').encode('ascii')
+                    + entry.creator.ljust(8, '\0').encode('ascii')[:8]
+                )
                 misc += write_uint32_le(entry.size)
                 misc += write_uint32_le(entry.uncompressed_size)
-                misc += b'\0' * 5
+                misc += entry.unk
                 misc += write_uint32_le(entry.offset + 32)
                 misc += write_uint32_le(entry.compression)
             target.write_bytes(header + output.getvalue() + write_uint32_le(len(index)) + write_uint32_le(first_name_offset + len(names)) + names + misc)
