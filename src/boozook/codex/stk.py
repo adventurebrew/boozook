@@ -16,6 +16,13 @@ class STKFileEntry(NamedTuple):
     compression: int
 
 
+class STK21FileEntry(NamedTuple):
+    offset: int
+    size: int
+    compression: int
+    uncompressed_size: int
+
+
 def replace_many(s: AnyStr, *reps: Tuple[AnyStr, AnyStr]) -> AnyStr:
     for r in reps:
         s = s.replace(*r)
@@ -34,21 +41,16 @@ def extract_stk21(stream):
         filename_offset = read_uint32_le(stream)
         stream.read(36)
         size = read_uint32_le(stream)
-        _uncompressed_size = read_uint32_le(stream)
+        uncompressed_size = read_uint32_le(stream)
         stream.read(5)
         offset = read_uint32_le(stream)
         compression = read_uint32_le(stream)
         stream.seek(filename_offset)
         file_name = safe_readcstr(stream).decode()
-        yield file_name, STKFileEntry(offset, size, compression)
+        yield file_name, STK21FileEntry(offset, size, compression, uncompressed_size)
 
 
 def extract(stream: IO[bytes]) -> Iterator[Tuple[str, STKFileEntry]]:
-    header = stream.read(6)
-    if header == b'STK2.1':
-        yield from extract_stk21(stream)
-        return
-    stream.seek(0, io.SEEK_SET)
     file_count = read_uint16_le(stream)
     for _i in range(file_count):
         raw_fname = stream.read(13)
@@ -137,13 +139,24 @@ def unpack(stream: IO[bytes], offset: int, size: int, compression: int) -> IO[by
     return io.BytesIO(unpack_chunk(view, uncompressed_size))
 
 
-class STKArchive(BaseArchive[STKFileEntry]):
-    def _create_index(self) -> 'ArchiveIndex[STKFileEntry]':
+class STKArchive(BaseArchive[STKFileEntry | STK21FileEntry]):
+    def _create_index(self) -> 'ArchiveIndex[STKFileEntry | STK21FileEntry]':
+        header = self._stream.read(6)
+        if header == b'STK2.1':
+            self.version = 2.1
+            return dict(extract_stk21(self._stream))
+        self._stream.seek(0, io.SEEK_SET)
+        self.version = 1
         return dict(extract(self._stream))
 
     @contextmanager
-    def _read_entry(self, entry: STKFileEntry) -> Iterator[IO[bytes]]:
-        yield unpack(self._stream, entry.offset, entry.size, entry.compression)
+    def _read_entry(self, entry: STKFileEntry | STK21FileEntry) -> Iterator[IO[bytes]]:
+        res = unpack(self._stream, entry.offset, entry.size, entry.compression)
+        if isinstance(entry, STK21FileEntry) and entry.uncompressed_size is not None:
+            res.seek(0, io.SEEK_END)
+            assert res.tell() == entry.uncompressed_size, (res.tell(), entry.uncompressed_size)
+            res.seek(0, io.SEEK_SET)
+        yield res
 
 
 open = make_opener(STKArchive)

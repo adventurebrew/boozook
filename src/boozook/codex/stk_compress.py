@@ -1,8 +1,9 @@
+from datetime import datetime
 import io
 from pathlib import Path
 from boozook.codex.base import write_uint32_le
 
-from boozook.codex.stk import STKFileEntry, unpack_chunk
+from boozook.codex.stk import STK21FileEntry, STKFileEntry, unpack_chunk
 
 
 def check_dico(unpacked, unpacked_index, counter, dico, dico_index):
@@ -142,12 +143,13 @@ def recompress_archive(archive, patches, target, force_recompress=False):
             )
             orig_data = file.read_bytes()
             patch_data = patches.pop(file.name, orig_data)
+            uncompressed_size = len(patch_data)
             if orig_data != patch_data or force_recompress:
                 content = pack_content(patch_data) if compression else patch_data
             else:
                 # Skip files that should stay the same as packing the content takes long time
                 with archive._read_entry(
-                    archive.index[file.name]._replace(compression=False)
+                    archive.index[file.name]._replace(compression=False) if archive.version != 2.1 else archive.index[file.name]._replace(compression=False, uncompressed_size=None)
                 ) as stream:
                     content = stream.read()
             dup = orig_offs.get(archive.index[file.name], None)
@@ -155,17 +157,48 @@ def recompress_archive(archive, patches, target, force_recompress=False):
                 index[file.name] = dup
                 continue
             fname = file.name if compression != 2 else file.with_suffix('.0OT').name
-            index[fname] = STKFileEntry(output.tell(), len(content), compression)
+            index[fname] = (
+                STKFileEntry(output.tell(), len(content), compression)
+                if archive.version != 2.1
+                else STK21FileEntry(output.tell(), len(content), compression, uncompressed_size)
+            )
             if len(content) % 2:
                 content += b'\0'
             output.write(content)
             orig_offs[archive.index[file.name]] = index[fname]
         for fname, content in patches.items():
             assert fname not in index, (list(index.keys()), list(patches.keys()))
-            index[fname] = STKFileEntry(output.tell(), len(content), False)
+            index[fname] = (
+                STKFileEntry(output.tell(), len(content), False)
+                if archive.version != 2.1
+                else STK21FileEntry(output.tell(), len(content), compression, uncompressed_size)
+            )
             if len(content) % 2:
                 content += b'\0'
             output.write(content)
 
+        # TODO: Allow preserve / modify
+        ctime = datetime.now().strftime('%d%m%Y%H%M%S').encode('ascii')
+        creator = 'Boozook'.ljust(8, '\0').encode('ascii')[:8]
+
+        if archive.version == 2.1:
+            filename_offset = output.tell() + 32
+            header = b'STK2.1' + ctime + creator + write_uint32_le(filename_offset)
+            filename_offset += 8
+            first_name_offset = filename_offset
+            misc = bytearray()
+            names = bytearray()
+            for fname, entry in index.items():
+                misc += write_uint32_le(filename_offset)
+                names += fname.encode('ascii') + b'\0'
+                filename_offset += len(fname) + 1
+                misc += b'\0' * 36
+                misc += write_uint32_le(entry.size)
+                misc += write_uint32_le(entry.uncompressed_size)
+                misc += b'\0' * 5
+                misc += write_uint32_le(entry.offset + 32)
+                misc += write_uint32_le(entry.compression)
+            target.write_bytes(header + output.getvalue() + write_uint32_le(len(index)) + write_uint32_le(first_name_offset + len(names)) + names + misc)
+            return
         header = write_header(index)
         target.write_bytes(header + output.getvalue())
