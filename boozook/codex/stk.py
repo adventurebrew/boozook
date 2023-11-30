@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from typing import IO, TYPE_CHECKING, AnyStr, Iterator, NamedTuple, Tuple, cast
 
 from pakal.archive import BaseArchive, make_opener
-from pakal.examples.common import read_uint16_le, read_uint32_le
+from pakal.examples.common import read_uint16_le, read_uint32_le, safe_readcstr
 from pakal.stream import PartialStreamView
 
 if TYPE_CHECKING:
@@ -22,7 +22,33 @@ def replace_many(s: AnyStr, *reps: Tuple[AnyStr, AnyStr]) -> AnyStr:
     return s
 
 
+def extract_stk21(stream):
+    _date = stream.read(14)
+    _creator = stream.read(8)
+    file_names_offset = read_uint32_le(stream)
+    stream.seek(file_names_offset)
+    file_count = read_uint32_le(stream)
+    misc_offset = read_uint32_le(stream)
+    for cpt in range(file_count):
+        stream.seek(misc_offset + cpt * 61)
+        filename_offset = read_uint32_le(stream)
+        stream.read(36)
+        size = read_uint32_le(stream)
+        _uncompressed_size = read_uint32_le(stream)
+        stream.read(5)
+        offset = read_uint32_le(stream)
+        compression = read_uint32_le(stream)
+        stream.seek(filename_offset)
+        file_name = safe_readcstr(stream).decode()
+        yield file_name, STKFileEntry(offset, size, compression)
+
+
 def extract(stream: IO[bytes]) -> Iterator[Tuple[str, STKFileEntry]]:
+    header = stream.read(6)
+    if header == b'STK2.1':
+        yield from extract_stk21(stream)
+        return
+    stream.seek(0, io.SEEK_SET)
     file_count = read_uint16_le(stream)
     for _i in range(file_count):
         raw_fname = stream.read(13)
