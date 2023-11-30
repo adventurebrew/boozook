@@ -21,6 +21,9 @@ black = "^23.3.0"
 pyinstaller = "^6.2.0"
 pip-licenses = "^4.3.3"
 
+[tool.poetry.scripts]
+boozook = "boozook.runner:main"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

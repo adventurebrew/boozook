@@ -37,7 +37,7 @@ jobs:
         poetry run pip download poetry-core -d dist
         poetry run pip install --no-index --find-links=dist boozook
         mv dist dist_old
-        poetry run pyinstaller --onefile -n boozook boozook/runner.py
+        poetry run pyinstaller --onefile -n boozook src/boozook/runner.py
     # Optionally verify that it works (provided that it does not need user interaction)
     - run: ./dist/boozook --help
     - run: |
