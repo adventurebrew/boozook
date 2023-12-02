@@ -15,11 +15,12 @@ Tools for extracting and editing Coktel Vision game resources
 * Adi 4 (DEV6)
 * Adibou 1
 * Adibou 2 (DEV6)
+* Adibou 3 (DEV7)
 * Geisha
 * Goblins 1
 * Gobliins 2
 * Gobliiins 3
-* Woodruff (DEV6)
+* Woodruff
 * Croustibat
 * Fascination
 
