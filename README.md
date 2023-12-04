@@ -13,13 +13,17 @@ Tools for extracting and editing Coktel Vision game resources
 
 # Suported games by boozook
 * Adi 4 (DEV6)
+* Adi 5 (DEV7)
 * Adibou 1
 * Adibou 2 (DEV6)
+* Adibou 3 (DEV7)
+* Adibou presente series (DEV7)
+* Adiboud'chou series (DEV7)
 * Geisha
 * Goblins 1
 * Gobliins 2
 * Gobliiins 3
-* Woodruff (DEV6)
+* Woodruff
 * Croustibat
 * Fascination
 
