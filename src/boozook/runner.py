@@ -231,13 +231,13 @@ def menu(argv=None):
     resources = {}
     if args.archive:
         resources['archive'] = {'patterns': args.patterns}
-    if args.fonts:
-        resources['fonts'] = {}
     if args.texts:
         resources['texts'] = {
             'allowed': args.allowed or (),
             'keys': args.keys,
         }
+    if args.fonts:
+        resources['fonts'] = {}
     if args.graphics:
         resources['graphics'] = {}
     if experimental and args.scripts:
@@ -274,7 +274,7 @@ def main():
             raise ValueError(repr(resource))
 
         if args.rebuild:
-            gamedir = pathlib.Path('patch')
+            gamedir = pathlib.Path('.')
 
 
 if __name__ == '__main__':
