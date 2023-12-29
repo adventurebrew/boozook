@@ -98,7 +98,11 @@ def compose(
     entry: ArchivePath,
     target: str | Path,
 ):
-    frames = read_image_grid(str(target / f'{entry.name}.png'))
+    target = Path(target)
+    fname = target / f'{entry.name}.png'
+    if not fname.exists():
+        return
+    frames = read_image_grid(str(fname))
     frames = enumerate(resize_frame(frame) for frame in frames)
     available = [(idx, char) for idx, char in frames if char is not None]
 

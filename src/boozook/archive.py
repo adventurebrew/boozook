@@ -58,7 +58,7 @@ class GameBase:
             return
         self._patched[(fname, alias)] = data
 
-    def rebuild(self, target='patch'):
+    def rebuild(self, target='.'):
         target = Path(target)
         os.makedirs(target, exist_ok=True)
         patches = defaultdict(dict)
@@ -144,7 +144,7 @@ def extract_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
 
 
 def rebuild_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
-    patch_dir = Path('patch')
+    patch_dir = Path('.')
     os.makedirs(patch_dir, exist_ok=True)
     for pattern, entry in game.search(patterns):
         base_archive = entry.name
