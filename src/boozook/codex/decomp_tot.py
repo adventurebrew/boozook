@@ -1107,6 +1107,74 @@ gob3_ops = {
     ),
 }
 
+    gob3_ops,
+    0x44: xparam('o4_draw0x44'),
+    0x45: xparam('o4_draw0x45'),
+    0x80: fparam('o4_playVmdOrMusic', reads_uint16le, read_expr, read_expr),
+    0x88: xparam('o4_draw0x8C'),
+    0x90: xparam('o4_draw0x90'),
+    0xA0: xparam('o4_draw0xA1'),
+    0xA0: xparam('o4_draw0xA2'),
+    0xA4: fparam('o4_draw0xA4', read_expr),
+    0x54: xparam('o4_draw0x57'),
+}
+
+gob5_ops = {
+    gob4_ops,
+    0x60: xparam('o5_deleteFile'),
+    0x44: xparam('o5_istrlen'),
+    0x00: fparam('o5_spaceShooter', reads_uint16le, read_expr, read_expr),
+    0x00: xparam('o5_getSystemCDSpeed'),
+    0x00: xparam('o5_getSystemRAM'),
+    0x00: xparam('o5_getSystemCPUSpeed'),
+    0x04: xparam('o5_getSystemDrawSpeed'),
+    0x04: fparam('o5_totalSystemSpecs', read_expr),
+    0x04: xparam('o5_saveSystemSpecs'),
+    0x04: fparam('o5_loadSystemSpecs', read_var_index, read_var_index),
+    0x08: fparam('o5_gob92', read_expr, read_var_index),
+    0x08: fparam('o5_gob95', read_expr, read_var_index, read_expr, read_expr),
+    0x08: fparam('o5_gob96', read_expr, read_var_index, read_expr, read_expr),
+    0x08: fparam('o5_gob97', read_expr, read_var_index, read_expr, read_expr),
+    0x0C: fparam('o5_gob98', read_expr, read_var_index, read_expr, read_expr),
+    0x0C: fparam('o5_gob100', read_expr, read_var_index, read_expr, read_expr),
+    0x0C: fparam('o5_gob200', read_expr, read_var_index, read_expr, read_expr),
+}
+
+gob6_ops = {
+    gob5_ops,
+    0x00: xparam('o6_loadCursor'),
+    0x08: xparam('o6_assign'),
+    0x24: fparam('o6_createSprite', reads_uint16le, read_expr, read_expr),
+}
+
+gob7_ops = {
+    gob6_ops,
+    0x44: xparam('o7_displayWarning'),
+    0x44: xparam('o7_logString'),
+    0x54: fparam('o7_intToString', reads_uint16le, read_expr, read_expr),
+    0x58: fparam('o7_callFunction', reads_uint16le, read_expr, read_expr),
+    0x58: fparam('o7_loadFunctions', reads_uint16le, read_expr, read_expr),
+    0x60: fparam('o7_copyFile', reads_uint16le, read_expr, read_expr),
+    0x60: fparam('o7_moveFile', reads_uint16le, read_expr, read_expr),
+    0x88: fparam('o7_draw0x89', reads_uint16le, read_expr, read_expr),
+    0x88: fparam('o7_findFile', reads_uint16le, read_expr, read_expr),
+    0x88: fparam('o7_findCDFile', reads_uint16le, read_expr, read_expr),
+    0x8C: fparam('o7_getSystemProperty', reads_uint16le, read_expr, read_expr),
+    0x90: fparam('o7_loadImage', reads_uint16le, read_expr, read_expr),
+    0x90: fparam('o7_setVolume', reads_uint16le, read_expr, read_expr),
+    0x94: fparam('o7_zeroVar', reads_uint16le, read_expr, read_expr),
+    0xA0: fparam('o7_getINIValue', reads_uint16le, read_expr, read_expr),
+    0xA0: fparam('o7_setINIValue', reads_uint16le, read_expr, read_expr),
+    0xA4: fparam('o7_loadIFFPalette', reads_uint16le, read_expr, read_expr),
+    0xC4: fparam('o7_opendBase', reads_uint16le, read_expr, read_expr),
+    0xC4: fparam('o7_closedBase', reads_uint16le, read_expr, read_expr),
+    0xC4: fparam('o7_getDBString', reads_uint16le, read_expr, read_expr),
+    0x00: fparam('o7_loadCursor', reads_uint16le, read_expr, read_expr),
+    0x4C: fparam('o7_readData', reads_uint16le, read_expr, read_expr),
+    0x44: fparam('o7_oemToANSI', reads_uint16le, read_expr, read_expr),
+    0x44: fparam('o7_gob0x201', reads_uint16le, read_expr, read_expr),
+
+}
 
 named_variables = {
     'var8_4931': 'g_Language',
