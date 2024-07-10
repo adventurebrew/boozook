@@ -55,7 +55,7 @@ class GameBase:
     def search(self, patterns):
         return game_search(self.base_dir, patterns=patterns, patches=self.patches)
 
-    def patch(self, fname: str, data: bytes, alias: str | None = None):
+    def patch(self, fname: str, data: bytes, alias: Optional[str] = None):
         if not alias:
             alias = fname
         if self.allowed_patches:
@@ -65,7 +65,7 @@ class GameBase:
             return
         self._patched[(fname, alias)] = data
 
-    def rebuild(self, target='.'):
+    def rebuild(self, target='rebuild'):
         target = Path(target)
         os.makedirs(target, exist_ok=True)
         patches = defaultdict(dict)
@@ -113,7 +113,7 @@ class DirectoryBackedArchive(MutableMapping[str, bytes]):
     def __setitem__(self, key: str, content: bytes) -> None:
         if key not in self._allowed:
             raise KeyError(key)
-        Path(key).write_bytes(content)
+        (self.directory / key).write_bytes(content)
         self._cache[key] = content
 
     def __getitem__(self, key: str) -> bytes:
@@ -149,15 +149,11 @@ def extract_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
                         raise ValueError(f'empty file {file.name} in {base_archive}: {cont}')
                     continue
                 (ext_archive / file.name).write_bytes(file.read_bytes())
-                # print(
-                #     file.name,
-                #     int(archive.index[file.name].compression),
-                # )
 
 
 def rebuild_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
-    patch_dir = Path('.')
-    os.makedirs(patch_dir, exist_ok=True)
+    rebuild_dir = Path('rebuild')
+    os.makedirs(rebuild_dir, exist_ok=True)
     for pattern, entry in game.search(patterns):
         base_archive = entry.name
         ext_archive = extract_dir / base_archive
@@ -167,7 +163,7 @@ def rebuild_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
                 allowed={x.name for x in ext_archive.iterdir()},
             )
             with stk.open(entry) as archive:
-                recompress_archive(archive, patches, patch_dir / entry.name)
+                recompress_archive(archive, patches, rebuild_dir / entry.name)
 
 
 def menu():
