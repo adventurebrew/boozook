@@ -14,7 +14,7 @@ prompt-toolkit = "^3.0.43"
 
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.3.0"
+black = "^23.3.0"
 
 
 [tool.poetry.group.release.dependencies]
