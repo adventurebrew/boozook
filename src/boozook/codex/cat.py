@@ -16,15 +16,14 @@ LINE_SIZE = 40
 class Language(IntEnum):
     DAT = 0
     ALL = 1
-    ITA = 2
+    ANG = 2
     ESP = 3
-    NDL = 4
+    ITA = 4
     USA = 5
-    KOR = 6
-    POR = 7
+    NDL = 6
+    KOR = 7
     ISR = 8
-    JAP = 9
-    ANG = 10
+    IDE = 9
 
 
 def compose(
