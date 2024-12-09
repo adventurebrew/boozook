@@ -26,13 +26,13 @@ def encode(game, patterns, target):
 def menu():
     import argparse
 
-    parser = argparse.ArgumentParser(description='extract graphics from archive')
-    parser.add_argument('directory', help='game directory to work on')
+    parser = argparse.ArgumentParser(description='Extract Graphics from Archive')
+    parser.add_argument('directory', help='Game directory to work on')
     parser.add_argument(
         '--rebuild',
         '-r',
         action='store_true',
-        help='create modified game resource with the changes',
+        help='Create modified game resource with the changes',
     )
     return parser.parse_args()
 

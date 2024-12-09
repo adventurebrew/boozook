@@ -91,25 +91,25 @@ def encode(
 def menu():
     import argparse
 
-    parser = argparse.ArgumentParser(description='extract text from archive')
-    parser.add_argument('directory', help='game directory to work on')
+    parser = argparse.ArgumentParser(description='Extract Text from Archive')
+    parser.add_argument('directory', help='Game directory to work on')
     parser.add_argument(
         '--rebuild',
         '-r',
         action='store_true',
-        help='create modified game resource with the changes',
+        help='Create modified game resource with the changes',
     )
     parser.add_argument(
         '--allowed',
         '-i',
         action='append',
-        help='allow only specific patterns to be modified',
+        help='Allow only specific patterns to be modified',
     )
     parser.add_argument(
         '--keys',
         '-k',
         action='store_true',
-        help='replace text by keyboard key position',
+        help='Replace Text by Keyboard key position',
     )
     return parser.parse_args()
 

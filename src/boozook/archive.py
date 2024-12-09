@@ -173,19 +173,19 @@ def rebuild_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
 def menu():
     import argparse
 
-    parser = argparse.ArgumentParser(description='extract stk archive')
-    parser.add_argument('directory', help='game directory with files to extract')
+    parser = argparse.ArgumentParser(description='Extract stk Archive')
+    parser.add_argument('directory', help='Game directory with files to extract')
     parser.add_argument(
         'patterns',
         nargs='*',
         default=ARCHIVE_PATTERNS,
-        help='game directory with files to extract',
+        help='Game directory with Files to extract',
     )
     parser.add_argument(
         '--rebuild',
         '-r',
         action='store_true',
-        help='create modified game resource with the changes',
+        help='Create modified game resource with the changes',
     )
     return parser.parse_args()
 
