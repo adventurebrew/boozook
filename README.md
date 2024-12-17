@@ -45,6 +45,7 @@ Tools for extracting and editing Coktel Vision game resources.
 - Bargon Attack
 - English Fever (DEV7)
 - E.S.S. Mega
+- Emmanuelle
 - Inca
 - Inca 2
 - Galactic Empire
