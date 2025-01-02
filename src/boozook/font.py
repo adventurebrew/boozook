@@ -27,13 +27,13 @@ def encode(game, patterns, fonts_dir):
 def menu():
     import argparse
 
-    parser = argparse.ArgumentParser(description='extract fonts from archive')
-    parser.add_argument('directory', help='game directory to work on')
+    parser = argparse.ArgumentParser(description='Extract Fonts from Archive')
+    parser.add_argument('directory', help='Game directory to work on')
     parser.add_argument(
         '--rebuild',
         '-r',
         action='store_true',
-        help='create modifed game resource with the changes',
+        help='Create modifed game resource with the changes',
     )
     return parser.parse_args()
 
