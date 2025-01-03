@@ -152,13 +152,13 @@ def menu(argv=None):
         '-i',
         '--allowed',
         action='append',
-        help='allow only specific patterns to be modified',
+        help='Allow only specific patterns to be modified',
     )
     parser.add_argument(
         '-k',
         '--keys',
         action='store_true',
-        help='replace text by keyboard key position',
+        help='Replace text by keyboard key position',
     )
 
     parser.add_argument(
@@ -179,7 +179,7 @@ def menu(argv=None):
         '--patterns',
         nargs='*',
         default=archive.ARCHIVE_PATTERNS,
-        help='game directory with files to extract',
+        help='Game directory with files to extract',
     )
 
     parser.add_argument(
