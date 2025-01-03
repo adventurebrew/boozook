@@ -58,7 +58,7 @@ def compose(
                         assert len(towrite) == LINE_SIZE, len(towrite)
                         output.write(towrite)
 
-                # force write at current stream position (fill with zeros)
+                # Force write at current stream position (fill with zeros)
                 output.write(b'\0')
                 game.patch(
                     entry.name,
