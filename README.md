@@ -323,7 +323,8 @@ See "Running Development Version" below for detailed instructions.
 3. **Ensure you have Python >= 3.12 installed**:
    You can check your Python version by running:
    ```sh
-   python --version
+   Under Windows > python --version
+   Under Linux > python3 --version
    ```
 
 4. **Install Dependencies**:
