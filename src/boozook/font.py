@@ -47,8 +47,10 @@ def main(gamedir, rebuild):
     game = archive.open_game(gamedir)
     if not rebuild:
         decode(game, patterns, fonts_dir)
+        print("Fonts extracted\n")
     else:
         encode(game, patterns, fonts_dir)
+        print("Fonts rebuilt\n")
 
 
 if __name__ == '__main__':
