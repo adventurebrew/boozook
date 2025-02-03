@@ -201,8 +201,10 @@ def main(
     game = open_game(gamedir)
     if not rebuild:
         extract_archive(game, extract_dir, patterns=patterns)
+        print("Extraction completed\n")
     else:
         rebuild_archive(game, extract_dir, patterns=patterns)
+        print("Rebuild completed\n")
 
 
 if __name__ == '__main__':
