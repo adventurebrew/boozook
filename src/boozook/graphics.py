@@ -46,8 +46,10 @@ def main(gamedir, rebuild):
     game = archive.open_game(gamedir)
     if not rebuild:
         decode(game, patterns, target)
+        print("Graphics extracted\n")
     else:
         encode(game, patterns, target)
+        print("Graphics rebuilt\n")
 
 
 if __name__ == '__main__':
