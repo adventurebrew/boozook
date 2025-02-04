@@ -595,9 +595,7 @@ video_ops = {
     0x55: vparam('o2_setGoblinState', read_expr, read_expr, read_expr),
     0x56: vparam('o2_placeGoblin', read_expr, read_expr, read_expr, read_expr),
     0x80: vparam('o2_initScreen', reads_uint8, reads_uint8, read_expr, read_expr),
-    0x81: vparam(
-        'o2_scroll', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr
-    ),
+    0x81: vparam('o2_scroll', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
     0x82: vparam('o2_setScrollOffset', read_expr, read_expr),
     0x83: vparam(
         'o2_playImd',
