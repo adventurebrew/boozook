@@ -532,14 +532,7 @@ video_ops = {
     0x00: lvparam('o2_loadMult', video_o2_loadMult),
     0x01: lvparam('o2_playMult', video_o2_playMult),
     0x02: vparam('o2_freeMultKeys', reads_uint16le),
-    0x07: vparam(
-        'o1_initCursor',
-        read_var_index,
-        read_var_index,
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-    ),
+    0x07: vparam('o1_initCursor', read_var_index, read_var_index, reads_uint16le, reads_uint16le, reads_uint16le),
     0x08: vparam(
         'o1_initCursorAnim', read_expr, reads_uint16le, reads_uint16le, reads_uint16le
     ),
