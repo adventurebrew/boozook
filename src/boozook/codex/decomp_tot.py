@@ -598,15 +598,7 @@ video_ops = {
     0x81: vparam('o2_scroll', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
     0x82: vparam('o2_setScrollOffset', read_expr, read_expr),
     0x83: vparam('o2_playImd', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
-    0x84: vparam(
-        'o2_getImdInfo',
-        read_expr,
-        read_var_index,
-        read_var_index,
-        read_var_index,
-        read_var_index,
-        read_var_index,
-    ),
+    0x84: vparam('o2_getImdInfo', read_expr, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index,),
     0x85: vparam('o2_openItk', read_expr),
     0x86: vparam('o2_closeItk'),
 }
