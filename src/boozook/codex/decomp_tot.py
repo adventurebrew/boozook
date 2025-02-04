@@ -1148,18 +1148,7 @@ gob1_ops = { # version 49 - Gob1, Bargon, Fascination, LittleRed
     0x27: fparam('o1_freeSprite', reads_uint16le),
     0x30: fparam('o1_returnTo'),
     0x31: fparam('o1_loadSpriteContent', reads_uint16le, reads_uint16le, reads_uint16le),
-    0x32: fparam(  # check diff in Fascination
-        'o1_copySprite',
-        reads_uint16le,
-        reads_uint16le,
-        read_expr,
-        read_expr,
-        read_expr,
-        read_expr,
-        read_expr,
-        read_expr,
-        reads_uint16le,
-    ),
+    0x32: fparam('o1_copySprite', reads_uint16le, reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le), # check diff in Fascination
     0x33: fparam(
         'o1_fillRect',
         reads_uint16le,
