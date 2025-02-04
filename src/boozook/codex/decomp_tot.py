@@ -1144,13 +1144,7 @@ gob1_ops = { # version 49 - Gob1, Bargon, Fascination, LittleRed
     0x23: fparam('o1_speakerOff'),
     0x24: fparam('o1_putPixel', reads_uint16le, read_expr, read_expr, read_expr),
     0x25: gparam('o1_goblinFunc'),
-    0x26: fparam(
-        'o1_createSprite',
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-    ),
+    0x26: fparam('o1_createSprite', reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le),
     0x27: fparam('o1_freeSprite', reads_uint16le),
     0x30: fparam('o1_returnTo'),
     0x31: fparam(
