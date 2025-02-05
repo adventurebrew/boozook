@@ -1229,38 +1229,38 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0x11: xparam('o7_printText'),
 	0x19: xparam('o6_removeHotspot'),
     0xA0: xparam('o7_draw0xA0', read_expr, read_var_index, read_expr),
-    0xAA: xparam('o7_draw0xAA', read_expr, read_expr)
-    0xAC: xparam('o7_draw0xAC', read_expr, read_expr, read_expr)
-    0xAD: xparam('o7_draw0xAD', read_expr, read_expr)
-    0xAE: xparam('o7_draw0xAE', read_expr, read_expr)
-    0xAF: xparam('o7_draw0xAF', read_expr, read_expr, read_expr)
-    0xB0: xparam('o7_draw0xB0', read_expr, read_expr, read_expr)
-    0xB1: xparam('07_draw0xB1', read_expr, read_expr)
-    0xB4: xparam('o7_draw0xB4', read_expr, read_expr, read_expr read_var_index)
-    0xB6: xparam('o7_draw0xB6', read_expr, read_expr, read_var_index)
-    0xCC: xparam('o7_draw0xCC', read_var_index)
-    0xCD: xparam('o7_draw0xCD', read_expr, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index)
-    0xCE: xparam('07_draw0xCE', read_expr, read_var_index, read_var_index)
-    0xDC: xparam('o7_draw0xDC', read_expr, read_var_index)
-    0xDD: xparam('07_draw0xDD', read_expr)
-    0xDE: xparam('o7_draw0xDE', read_expr, read_expr)
-    0xDF: xparam('o7_draw0xDF', read_expr)
-    0xE0: xparam('07_draw0xE0')
-    0xE1: xparam('07_draw0xE1')
-    0xE2: xparam('07_draw0xE2', read_var_index, read_var_index, read_var_index)
-    0xE3: xparam('07_draw0xE3')
-    0xE4: xparam('07_draw0xE4')
-    0xE5: xparam('o7_draw0xE5')
-    0xE6: xparam('o7_draw0xE6', read_var_index, read_var_index, read_var_index, read_var_index, read_var_index)
-    0xE7: xparam('o7_draw0xE7', read_var_index)
-    0xF8: xparam('o7_vmdGetSoundBuffer', read_var_index)
-    0xF8: xparam('o7_vmdReleaseSoundBuffer', read_expr, read_var_index)
+    0xAA: xparam('o7_draw0xAA', read_expr, read_expr),
+    0xAC: xparam('o7_draw0xAC', read_expr, read_expr, read_expr),
+    0xAD: xparam('o7_draw0xAD', read_expr, read_expr),
+    0xAE: xparam('o7_draw0xAE', read_expr, read_expr),
+    0xAF: xparam('o7_draw0xAF', read_expr, read_expr, read_expr),
+    0xB0: xparam('o7_draw0xB0', read_expr, read_expr, read_expr),
+    0xB1: xparam('07_draw0xB1', read_expr, read_expr),
+    0xB4: xparam('o7_draw0xB4', read_expr, read_expr, read_expr, read_var_index),
+    0xB6: xparam('o7_draw0xB6', read_expr, read_expr, read_var_index),
+    0xCC: xparam('o7_draw0xCC', read_var_index),
+    0xCD: xparam('o7_draw0xCD', read_expr, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index),
+    0xCE: xparam('07_draw0xCE', read_expr, read_var_index, read_var_index),
+    0xDC: xparam('o7_draw0xDC', read_expr, read_var_index),
+    0xDD: xparam('07_draw0xDD', read_expr),
+    0xDE: xparam('o7_draw0xDE', read_expr, read_expr),
+    0xDF: xparam('o7_draw0xDF', read_expr),
+    0xE0: xparam('07_draw0xE0'),
+    0xE1: xparam('07_draw0xE1'),
+    0xE2: xparam('07_draw0xE2', read_var_index, read_var_index, read_var_index),
+    0xE3: xparam('07_draw0xE3'),
+    0xE4: xparam('07_draw0xE4'),
+    0xE5: xparam('o7_draw0xE5'),
+    0xE6: xparam('o7_draw0xE6', read_var_index, read_var_index, read_var_index, read_var_index, read_var_index),
+    0xE7: xparam('o7_draw0xE7', read_var_index),
+    0xF8: xparam('o7_vmdGetSoundBuffer', read_var_index),
+    0xF8: xparam('o7_vmdReleaseSoundBuffer', read_expr, read_var_index),
     0x1B: xparam('oPlaytoons_F_1B'),
     0x24: xparam('oPlaytoons_putPixel'),
     0x27: xparam('oPlaytoons_freeSprite'),
 	0x32: xparam('o1_copySprite'),
 	0x33: xparam('o6_fillRect'),
-    0x34: xparam('o7_getFreeDiskSpace', read_uint16_le)
+    0x34: xparam('o7_getFreeDiskSpace', reads_uint16le),
     # 0x33: xparam('o7_fillRect'),
     0x3F: xparam('oPlaytoons_checkData'),
     # 0x3F: xparam('o7_checkData'),
@@ -1269,7 +1269,7 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0x3E: xparam('o7_getFreeMem'),
     0x4E: xparam('o7_writeData'),
     0x4D: xparam('oPlaytoons_readData'),
-    0x8C: xparam('o7_getImageFileInfo', read_expr, read_expr read_uint16_le read_uint16_le)
+    0x8C: xparam('o7_getImageFileInfo', read_expr, read_expr, reads_uint16le, reads_uint16le)
     # 0x4D: xparam('o7_readData'),
 }
 
