@@ -1,3 +1,8 @@
+# Opcode macros:
+# xparam - not implemented yet
+# gparam - function with custom logic regarding the script parsing
+# fparam - function that just read the given parametera by order
+
 from collections import defaultdict
 from contextlib import redirect_stdout
 from functools import partial
