@@ -1232,6 +1232,7 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0xAA: xparam('o7_draw0xAA', read_expr, read_expr)
     0xAC: xparam('o7_draw0xAC', read_expr, read_expr, read_expr)
     0xAD: xparam('o7_draw0xAD', read_expr, read_expr)
+    0xAE: xparam('o7_draw0xAE', read_expr, read_expr)
     0xAF: xparam('o7_draw0xAF', read_expr, read_expr, read_expr)
     0xB0: xparam('o7_draw0xB0', read_expr, read_expr, read_expr)
     0xB1: xparam('07_draw0xB1', read_expr, read_expr)
@@ -1249,6 +1250,11 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0xE2: xparam('07_draw0xE2', read_var_index, read_var_index, read_var_index)
     0xE3: xparam('07_draw0xE3')
     0xE4: xparam('07_draw0xE4')
+    0xE5: xparam('o7_draw0xE5')
+    0xE6: xparam('o7_draw0xE6', read_var_index, read_var_index, read_var_index, read_var_index, read_var_index)
+    0xE7: xparam('o7_draw0xE7', read_var_index)
+    0xF8: xparam('o7_vmdGetSoundBuffer', read_var_index)
+    0xF8: xparam('o7_vmdReleaseSoundBuffer', read_expr, read_var_index)
     0x1B: xparam('oPlaytoons_F_1B'),
     0x24: xparam('oPlaytoons_putPixel'),
     0x27: xparam('oPlaytoons_freeSprite'),
