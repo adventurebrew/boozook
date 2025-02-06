@@ -1235,7 +1235,7 @@ gob4_ops = {
     0x44: xparam('o4_draw0x90', read_var_index, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index),
     0xA1: xparam('o4_draw0xA1', read_expr, read_expr, read_expr, read_expr, read_var_index),
     0xA2: xparam('o4_draw0xA2', read_expr, read_expr, read_expr, read_expr),
-    0xA4: xparam('04_draw0xA4', read_expr, read_expr, read_expr),
+    0xA4: xparam('o4_draw0xA4', read_expr, read_expr, read_expr),
 
 }
 
