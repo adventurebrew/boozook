@@ -1372,31 +1372,31 @@ def read_ext_item(items, index, ext_data, com_data):
 def menu():
     import argparse
 
-    parser = argparse.ArgumentParser(description='extract pak archive')
-    parser.add_argument('directory', help='game directory to work on')
+    parser = argparse.ArgumentParser(description='Decompile TOT Scripts')
+    parser.add_argument('directory', help='Game directory to work on')
     parser.add_argument(
         'totfiles',
         nargs='*',
         default=['*.TOT'],
-        help='script to decompile',
+        help='Script to decompile',
     )
-    parser.add_argument('version', help='script version to decompile', choices=optables.keys())
+    parser.add_argument('version', help='Script version to decompile', choices=optables.keys())
     parser.add_argument(
         '--lang',
         '-l',
-        help='language to focus on message hints',
+        help='Language to focus on message hints',
     )
     parser.add_argument(
         '--keys',
         '-k',
         action='store_true',
-        help='replace text by keyboard key position',
+        help='Replace text by keyboard key position',
     )
     parser.add_argument(
         '--exported',
         '-e',
         action='store_true',
-        help='only decompile exported functions',
+        help='Only decompile exported functions',
     )
 
 
