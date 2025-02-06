@@ -1221,7 +1221,6 @@ gob3_ops = {  # version 51 - Gob3, Adibou1, Inca2, Woodruff, Dynasty
     0x23: fparam('o3_speakerOff'),
     0x25: xparam('oInca2_spaceShooter'),
     0x32: fparam('o3_copySprite', reads_uint16le, reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le),
-    0x45: gparam('o5_istrlen'),
 }
 
 gob4_ops = {
@@ -1239,6 +1238,27 @@ gob4_ops = {
 
 }
 
+gob5_ops = {
+    **gob4_ops,
+    0x60: xparam('o5_deleteFile', read_expr),
+    0x45: gparam('o5_istrlen'),
+    0x00: gparam('o5_spaceShooter'),
+    0x01: xparam('o5_getSystemCDSpeed', read_uint16le),
+    0x02: xparam('o5_getSystemRAM', read_uint16le),
+    0x03: xparam('o5_getSystemCPUSpeed', read_uint16le),
+    0x04: xparam('o5_getSystemDrawSpeed', read_uint16le),
+    0x05: xparam('o5_totalSystemSpecs', read_uint16le),
+    0x06: xparam('o5_saveSystemSpecs'),
+    0x07: xparam('o5_loadSystemSpecs'),
+    0x08: xparam('o5_gob92', read_uint16le),
+    0x09: xparam('o5_gob95', read_uint16le, read_uint16le, read_uint16le, read_uint16le),
+    0x10: xparam('o5_gob96', read_uint16le, read_uint16le, read_uint16le, read_uint16le),
+    0x11: xparam('o5_gob97'),
+    0x0C: xparam('o5_gob98'),
+    0x0D: xparam('o5_gob100', read_uint16le, read_uint16le, read_uint16le, read_uint16le),
+    0x0E: xparam('05_gob200', read_uint16le, read_uint16le, read_uint16le),
+    
+}
 
 gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     **gob3_ops,
