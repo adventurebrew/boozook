@@ -1243,6 +1243,7 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0xB1: xparam('07_draw0xB1', read_expr, read_expr),
     0xB4: xparam('o7_draw0xB4', read_expr, read_expr, read_expr, read_var_index),
     0xB6: xparam('o7_draw0xB6', read_expr, read_expr, read_var_index),
+    0xC4: xparam('o7_getDBString', read_expr, read_expr, read_expr, read_expr, read_var_index),
     0xCC: xparam('o7_draw0xCC', read_var_index),
     0xCD: xparam('o7_draw0xCD', read_expr, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index),
     0xCE: xparam('07_draw0xCE', read_expr, read_var_index, read_var_index),
