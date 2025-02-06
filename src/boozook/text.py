@@ -130,8 +130,10 @@ def main(gamedir: str, rebuild: bool, allowed: Sequence[str]=(), keys: bool = Fa
     game = archive.open_game(gamedir, allowed_patches=allowed or ())
     if not rebuild:
         decode(game, patterns, texts_dir, decoders)
+        print('Text extracted\n')
     else:
         encode(game, patterns, texts_dir, decoders)
+        print('Text rebuilt\n')
 
 
 if __name__ == '__main__':
