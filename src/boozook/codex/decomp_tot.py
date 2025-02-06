@@ -1467,7 +1467,7 @@ def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
         if prever is not None and prever != tot_file[41]:
             print('Warning: Script version mismatch', prever, tot_file[41])
         ctx['ver_script'] = tot_file[41]
-        print('script version', ctx['ver_script'], tot_file[0x3d])
+        print('Script version', ctx['ver_script'], tot_file[0x3d])
 
         ctx['optable'] = optables[ctx['ver_script']]
 
