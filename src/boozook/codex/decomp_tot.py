@@ -297,7 +297,7 @@ def read_var_index(scf, arg_0=0, arg_4=0):
 
 def xparam(name, *params):
     def inner(scf):
-        raise NotImplementedError(name)
+        raise NotImplementedError(f"Unimplemented opcode: {name}")
 
     return inner
 
