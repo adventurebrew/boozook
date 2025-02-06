@@ -1261,7 +1261,7 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0xE7: xparam('o7_draw0xE7', read_var_index),
     0x89: xparam('o7_draw0x89', read_expr, read_expr),
     0xF8: xparam('o7_vmdGetSoundBuffer', read_var_index),
-    0xF8: xparam('o7_vmdReleaseSoundBuffer', read_expr, read_var_index),
+    0xF9: xparam('o7_vmdReleaseSoundBuffer', read_expr, read_var_index),
     0x1B: xparam('oPlaytoons_F_1B'),
     0x24: xparam('oPlaytoons_putPixel'),
     0x27: xparam('oPlaytoons_freeSprite'),
