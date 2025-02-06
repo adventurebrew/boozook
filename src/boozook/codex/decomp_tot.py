@@ -1224,6 +1224,21 @@ gob3_ops = {  # version 51 - Gob3, Adibou1, Inca2, Woodruff, Dynasty
     0x45: gparam('o5_istrlen'),
 }
 
+gob4_ops = {
+    **gob3_ops,
+    0x44: xparam('o4_draw0x44', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
+    0x45: xparam('o4_draw0x45', read_expr, read_expr),
+    0x57: xparam('o4_draw0x57', read_var_index, read_var_index),
+    0x44: xparam('o4_playVmdOrMusic', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
+    0x8A: xparam('o4_draw0x8A', read_expr, read_var_index, read_var_index),
+    0x8C: xparam('o4_draw0x8C', read_expr, read_var_index, read_var_index),
+    0x44: xparam('o4_draw0x90', read_var_index, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index),
+    0xA1: xparam('o4_draw0xA1', read_expr, read_expr, read_expr, read_expr, read_var_index),
+    0xA2: xparam('o4_draw0xA2', read_expr, read_expr, read_expr, read_expr),
+    0xA4: xparam('04_draw0xA4', read_expr, read_expr, read_expr),
+
+}
+
 
 gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     **gob3_ops,
