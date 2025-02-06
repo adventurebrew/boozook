@@ -111,6 +111,7 @@ extracted/
 fonts/
 graphics/
 scripts/
+texts/
 *.ITK
 *.STK
 *.LTK
