@@ -1320,6 +1320,7 @@ named_variables = {
     'var8_4931': 'g_Language',
     'var8_4300': 'g_color',
     'var8_2124': 'stkArchive',
+    'var8_1800': 'g_items'
 }
 
 
