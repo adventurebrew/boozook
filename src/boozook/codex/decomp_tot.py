@@ -785,14 +785,14 @@ def o1_switch(scf):
 
         func_block(scf, 0)
 
-        printl(' ' * 4 + 'break')
+        printl(' ' * 4 + 'break;')
 
     if (peek_uint8(scf) >> 4) == 4:
         printl('default:')
         _skip = scf.read(1)
         func_block(scf, 0)
 
-        printl(' ' * 4 + 'break')
+        printl(' ' * 4 + 'break;')
 
     printl('}')
 
