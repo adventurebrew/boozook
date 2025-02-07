@@ -1319,6 +1319,7 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
 named_variables = {
     'var8_4931': 'g_Language',
     'var8_4300': 'g_color',
+    'var8_2124': 'stkArchive',
 }
 
 
