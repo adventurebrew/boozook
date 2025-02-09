@@ -740,13 +740,7 @@ def o1_whileDo(scf):
 
 
 def o1_loadSpriteToPos(scf):
-    printl(
-        'o1_loadSpriteToPos',
-        reads_uint16le(scf),
-        read_expr(scf),
-        read_expr(scf),
-        reads_uint8(scf),
-    )
+    printl('o1_loadSpriteToPos', reads_uint16le(scf), read_expr(scf), read_expr(scf), reads_uint8(scf))
     _skip = scf.read(1)
 
 
