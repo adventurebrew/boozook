@@ -1533,7 +1533,7 @@ def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
                     works_on = on_functions(scfa) if exported else on_all_file(scfa)
                     for _ in works_on:
                         ctx['offset'] = scfa.tell()
-                        printl(f'sub_{scfa.tell() + 128} {{')
+                        printl(f'sub_{scfa.tell() + 128}() {{')
                         func_block(scfa, 2)
                         printl('}')
                         print()
