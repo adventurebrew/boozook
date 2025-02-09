@@ -1495,6 +1495,7 @@ def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
                 for line in tot.write_parsed(game, entry)
             )
         )
+        print(f'Decompiled {entry.name} sucessfully...')
 
         # TODO: could it be used to automatically detect optable
         prever = ctx.get('ver_script')
