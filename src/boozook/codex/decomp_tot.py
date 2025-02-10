@@ -1254,7 +1254,7 @@ gob5_ops = {
     
 }
 
-gob7_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
+gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     **gob3_ops,
     0x03: xparam('o6_loadCursor'),
     # 0x03: xparam('o7_loadCursor'),
