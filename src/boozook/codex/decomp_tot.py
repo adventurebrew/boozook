@@ -1262,7 +1262,11 @@ gob7_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0x0B: xparam('oPlaytoons_printText'),
     0x11: xparam('o7_printText'),
 	0x19: xparam('o6_removeHotspot'),
+    0x8C: xparam('o7_getSystemProperty', read_expr, read_var_index),
     0xA0: xparam('o7_draw0xA0', read_expr, read_var_index, read_expr),
+    0xA1: xparam('o7_getINIValue', read_expr, read_expr, read_expr, read_expr, read_var_index),
+    0xA2: xparam('o7_setINIValue', read_expr, read_expr, read_expr, read_expr),
+    0xA4: xparam('o7_loadIFFPalette', read_expr, read_expr, read_expr),
     0xAA: xparam('o7_draw0xAA', read_expr, read_expr),
     0xAC: xparam('o7_draw0xAC', read_expr, read_expr, read_expr),
     0xAD: xparam('o7_draw0xAD', read_expr, read_expr),
@@ -1272,7 +1276,9 @@ gob7_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0xB1: xparam('07_draw0xB1', read_expr, read_expr),
     0xB4: xparam('o7_draw0xB4', read_expr, read_expr, read_expr, read_var_index),
     0xB6: xparam('o7_draw0xB6', read_expr, read_expr, read_var_index),
-    0xC4: xparam('o7_getDBString', read_expr, read_expr, read_expr, read_expr, read_var_index),
+    0xC4: xparam('o7_opendBase', read_expr, read_expr),
+    0xC5: xparam('o7_closedBase', read_expr),
+    0xC6: xparam('o7_getDBString', read_expr, read_expr, read_expr, read_expr, read_var_index),
     0xCC: xparam('o7_draw0xCC', read_var_index),
     0xCD: xparam('o7_draw0xCD', read_expr, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index),
     0xCE: xparam('07_draw0xCE', read_expr, read_var_index, read_var_index),
@@ -1289,6 +1295,8 @@ gob7_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0xE6: xparam('o7_draw0xE6', read_var_index, read_var_index, read_var_index, read_var_index, read_var_index),
     0xE7: xparam('o7_draw0xE7', read_var_index),
     0x89: xparam('o7_draw0x89', read_expr, read_expr),
+    0x90: xparam('o7_findFile', read_expr, read_var_index, read_var_index),
+    0x91: xparam('o7_findCDFile', read_var_index, read_var_index),
     0xF8: xparam('o7_vmdGetSoundBuffer', read_var_index),
     0xF9: xparam('o7_vmdReleaseSoundBuffer', read_expr, read_var_index),
     0x1B: xparam('oPlaytoons_F_1B'),
@@ -1305,7 +1313,10 @@ gob7_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0x3E: xparam('o7_getFreeMem'),
     0x4E: xparam('o7_writeData'),
     0x4D: xparam('oPlaytoons_readData'),
-    0x8C: xparam('o7_getImageFileInfo', read_expr, read_expr, reads_uint16le, reads_uint16le)
+    0x8D: xparam('o7_getImageFileInfo', read_expr, read_expr, reads_uint16le, reads_uint16le),
+    0x90: xparam('o7_loadImage', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
+    0x91: xparam('o7_setVolume', read_expr),
+    0x94: xparam('o7_zeroVar', read_var_index)
     # 0x4D: xparam('o7_readData'),
 }
 
