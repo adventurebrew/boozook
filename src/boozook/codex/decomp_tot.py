@@ -1333,7 +1333,7 @@ named_variables = {
     'var32_268': 'g_language',
     'var8_272': 'manageData',
     'var32_872': 'selectCATFile',
-    'var8_13868': 'EMAJTOT',
+    'var8_13868': 'loadEMAJ',
     'var32_236': 'printableText',
     'var8_15748': 'characterFingus',
     'var8_15788': 'characterWinkle',
