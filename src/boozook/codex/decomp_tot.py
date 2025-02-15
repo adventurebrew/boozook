@@ -1116,6 +1116,27 @@ def oGeisha_goblinFunc(scf):
     gfunc(scf)
 
 
+adibou1_ops = {
+    0: xparam('oAdibou1_writeSprite'),
+    1: xparam('oAdibou1_readSprite'),
+    2: xparam('oAdibou1_fillAreaAtPoint'),
+    10: xparam('oAdibou1_getAppliNameFromId'),
+    11: xparam('oAdibou1_listApplications'),
+}
+
+bargon_ops = {
+    0x00: xparam('oBargon_intro0'),
+    0x01: xparam('oBargon_intro1'),
+    0x02: xparam('oBargon_intro2'),
+    0x03: xparam('oBargon_intro3'),
+    0x04: xparam('oBargon_intro4'),
+    0x05: xparam('oBargon_intro5'),
+    0x06: xparam('oBargon_intro6'),
+    0x07: xparam('oBargon_intro7'),
+    0x08: xparam('oBargon_intro8'),
+    0x09: xparam('oBargon_intro9'),
+    0x10: xparam('oBargon_NOP')
+}
 
 gob1_ops = { # version 49 - Gob1, Bargon, Fascination, LittleRed
     0x00: gparam('o1_callSub'),
