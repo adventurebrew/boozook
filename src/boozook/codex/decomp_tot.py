@@ -1379,6 +1379,7 @@ named_variables = {
     'var32_6516': 'isGerman',
     'var32_228': 'useTextLang',
     'var32_1888': 'compressedTOT',
+    'var32_64': 'chooseLET',
 }
 
 
