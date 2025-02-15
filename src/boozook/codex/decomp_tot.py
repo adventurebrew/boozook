@@ -318,7 +318,7 @@ def fparam(name, *params):
 
 def o1_callSub(scf):
     offset = read_uint16le(scf.read(2))
-    printl('o1_callSub', offset)
+    printl(f'o1_callSub {offset};')
     ctx['functions'].append(offset)
 
 
