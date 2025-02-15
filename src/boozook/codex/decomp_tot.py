@@ -1316,7 +1316,8 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0x8D: xparam('o7_getImageFileInfo', read_expr, read_expr, reads_uint16le, reads_uint16le),
     0x90: xparam('o7_loadImage', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
     0x91: xparam('o7_setVolume', read_expr),
-    0x94: xparam('o7_zeroVar', read_var_index)
+    0x94: xparam('o7_zeroVar', read_var_index),
+    0x309: xparam('o7_leaveApplication'),
     # 0x4D: xparam('o7_readData'),
 }
 
