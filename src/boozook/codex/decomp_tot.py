@@ -587,7 +587,7 @@ def o1_drawOperations(scf):
     vop = ord(scf.read(1))
     vfunc = video_ops.get(vop)
     if vfunc is None:
-        raise ValueError(f'Missing video op {hex(vop)} = {vop}')
+        raise ValueError(f'Missing Video opcode {hex(vop)} = {vop}')
     vfunc(scf)
 
 
@@ -704,7 +704,7 @@ def o2_goblinFunc(scf):
     if cmd != 101:
         gfunc = goblin_ops.get(goblin_lookup[cmd])
         if gfunc is None:
-            raise ValueError(f'Missing goblin op {hex(cmd)} = {cmd}')
+            raise ValueError(f'Missing Goblin opcode {hex(cmd)} = {cmd}')
         gfunc(scf)
 
 
@@ -1095,7 +1095,7 @@ def o1_goblinFunc(scf):
     # TODO: print function name
     gfunc = goblin1_ops.get(cmd)
     if gfunc is None:
-        raise ValueError(f'Missing goblin op {hex(cmd)} = {cmd}')
+        raise ValueError(f'Missing Goblin opcode {hex(cmd)} = {cmd}')
     gfunc(scf)
 
 
@@ -1112,7 +1112,7 @@ def oGeisha_goblinFunc(scf):
 
     gfunc = geisha_ops.get(cmd)
     if gfunc is None:
-        raise ValueError(f'Missing goblin op {hex(cmd)} = {cmd}')
+        raise ValueError(f'Missing Geisha opcode {hex(cmd)} = {cmd}')
     gfunc(scf)
 
 
