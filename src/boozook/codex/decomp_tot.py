@@ -1250,7 +1250,7 @@ gob5_ops = {
     0x11: xparam('o5_gob97'),
     0x0C: xparam('o5_gob98'),
     0x0D: xparam('o5_gob100', read_uint16le, read_uint16le, read_uint16le, read_uint16le),
-    0x0E: xparam('05_gob200', read_uint16le, read_uint16le, read_uint16le),
+    0x0E: xparam('o5_gob200', read_uint16le, read_uint16le, read_uint16le),
     
 }
 
