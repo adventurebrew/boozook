@@ -712,7 +712,7 @@ def o1_loadTot(scf):
     size = reads_uint8(scf)
 
     fname = scf.read(size).decode('ascii') if size & 0x80 == 0 else read_expr(scf)
-    printl(f'o1_loadTot {fname};')
+    printl(f'o1_loadTot({fname}.tot);')
 
 
 def o2_loadSound(scf):
