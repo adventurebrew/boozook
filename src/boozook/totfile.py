@@ -33,15 +33,7 @@ def read_tot(stream):
     _anim_data_size = read_uint32le(header[56:])
     im_file_number, ex_file_number, _commun_handling = [int(x) for x in header[59:62]]
 
-    # print(
-    #   _variables_count,
-    #   text_offset,
-    #   resources_offset,
-    #   _anim_data_size,
-    #   im_file_number,
-    #   ex_file_number,
-    #   _commun_handling
-    # )
+    # print(_variables_count, text_offset, resources_offset, _anim_data_size, im_file_number, ex_file_number, _commun_handling)
 
     functions = [read_uint16le(header[100 + 2 * i :]) for i in range(14)]
     stream.seek(0, 2)
