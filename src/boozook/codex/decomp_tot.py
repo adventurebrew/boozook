@@ -185,8 +185,7 @@ def read_expr(scf, stop=99):
         else:
             while ord(scf.read(1)) != stop:
                 pass
-            return expr + f'<unknown operator {operation}'
-            # raise ValueError(f'Unknown operator {operation}')
+            return expr + f'<unknown operator {operation}>'
 
         if operation == 9:
             num += 1
