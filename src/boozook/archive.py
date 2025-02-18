@@ -81,14 +81,14 @@ class GameBase:
                     patches[Path(entry.archive._filename).name][alias] = data
                 break
             else:
-                raise ValueError(f'entry {fname} was not found in game')
+                raise ValueError(f'Entry {fname} was not found in the Game')
         for arc, patch in patches.items():
             for pattern, entry in self.search([arc]):
                 with stk.open(entry) as archive:
                     recompress_archive(archive, patch, target / entry.name)
                 break
             else:
-                raise ValueError(f'archive {arc} was not found')
+                raise ValueError(f'Archive {arc} was not found')
 
 
 def open_game(
