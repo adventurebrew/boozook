@@ -497,7 +497,7 @@ def video_o2_pushVars(scf):
 def video_o2_popVars(scf):
     count = reads_uint8(scf)
     params = [read_var_index(scf) for _ in range(count)]
-    return params
+    return (f'{params};')
 
 
 def video_o2_playMult(scf):
