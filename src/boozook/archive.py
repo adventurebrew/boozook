@@ -149,10 +149,7 @@ def extract_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
                         raise ValueError(f'Empty file {file.name} in {base_archive}: {cont}')
                     continue
                 (ext_archive / file.name).write_bytes(file.read_bytes())
-                # print(
-                #     file.name,
-                #     int(archive.index[file.name].compression),
-                # )
+                # print(file.name, int(archive.index[file.name].compression)
 
 
 def rebuild_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
