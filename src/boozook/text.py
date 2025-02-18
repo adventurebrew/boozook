@@ -52,12 +52,7 @@ def decode(
         mode = 'a' if agg_file in open_files else 'w'
         with open(text_file, mode, encoding='utf-8') as out:
             if mode == 'w':
-                print(
-                    'FILE',
-                    *LANGS,
-                    sep='\t',
-                    file=out,
-                )
+                print('FILE', *LANGS, sep='\t', file=out,)
             open_files.add(agg_file)
             for texts in parse(game, entry):
                 print(
