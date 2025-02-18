@@ -55,15 +55,7 @@ def decode(
                 print('FILE', *LANGS, sep='\t', file=out,)
             open_files.add(agg_file)
             for texts in parse(game, entry):
-                print(
-                    entry.name,
-                    *(
-                        f'"{escape_quotes(decrypt(crypts, texts, lang))}"'
-                        for lang in LANGS
-                    ),
-                    sep='\t',
-                    file=out,
-                )
+                print(entry.name,*(f'"{escape_quotes(decrypt(crypts, texts, lang))}"' for lang in LANGS), sep='\t', file=out,)
 
 
 def encode(
