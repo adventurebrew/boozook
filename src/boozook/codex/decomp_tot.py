@@ -466,7 +466,7 @@ def video_o2_loadMultObject(scf):
 def video_o2_totSub(scf):
     length = reads_uint8(scf)
     args = read_expr(scf) if length & 0x80 else scf.read(length)
-    return args, reads_uint8(scf)
+    return f'({args}, {reads_uint8(scf)});'
 
 
 def video_o1_loadStatic(scf):
