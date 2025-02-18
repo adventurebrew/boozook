@@ -146,7 +146,7 @@ def extract_archive(game, extract_dir, patterns=ARCHIVE_PATTERNS):
                 if not file.name:
                     cont = file.read_bytes()
                     if cont:
-                        raise ValueError(f'empty file {file.name} in {base_archive}: {cont}')
+                        raise ValueError(f'Empty file {file.name} in {base_archive}: {cont}')
                     continue
                 (ext_archive / file.name).write_bytes(file.read_bytes())
                 # print(
