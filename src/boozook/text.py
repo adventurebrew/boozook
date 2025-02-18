@@ -126,9 +126,4 @@ def main(gamedir: str, rebuild: bool, allowed: Sequence[str]=(), keys: bool = Fa
 if __name__ == '__main__':
     args = menu()
 
-    main(
-        args.directory,
-        args.rebuild,
-        allowed=args.allowed,
-        keys=args.keys,
-    )
+    main(args.directory, args.rebuild, allowed=args.allowed, keys=args.keys)
