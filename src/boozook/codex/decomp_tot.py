@@ -1571,11 +1571,4 @@ def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
 if __name__ == '__main__':
     args = menu()
 
-    main(
-        args.directory,
-        False,
-        args.totfiles,
-        args.lang,
-        args.keys,
-        args.exported,
-    )
+    main(args.directory, False, args.totfiles, args.lang, args.keys, args.exported)
