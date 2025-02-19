@@ -346,6 +346,42 @@ def o2_assign(scf):
         printl("{} = {}".format(var_index, expr))
 
 
+def o6_assign(scf):
+    dest_type = peek_uint8(scf)
+    var_index = read_var_index(scf)
+
+    if var_index != 0:
+        var_index2 = read_var_index(scf)
+        var_6 = reads_uint16le(scf)
+
+        printl("memcpy({}, {}, {});".format(var_index, var_index2, var_6 * 4))
+
+        return
+
+    if peek_uint8(scf) == 98:
+        _skip = scf.read(1)
+        loop_count = scf.read(1)[0]
+
+        off = 0
+        for _ in range(loop_count):
+            c = scf.read(1)[0]
+            n = reads_uint16le(scf)
+
+            printl("memset({} + {}, {}, {});".format(var_index, off, c, n))
+
+            off += n
+    elif peek_uint8(scf) == 99:
+        _skip = scf.read(1)
+        loop_count = scf.read(1)[0]
+
+        for i in range(loop_count):
+            expr = read_expr(scf)
+            printl("{}[{}] = {};".format(var_index, i * 2 if dest_type == 24 else i, expr))
+    else:
+        expr = read_expr(scf)
+        printl("{} = {};".format(var_index, expr))
+	    
+
 def reads_uint8(stream):
     return ord(stream.read(1))
 
