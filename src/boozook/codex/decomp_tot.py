@@ -1314,7 +1314,7 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     **gob3_ops,
     0x03: xparam('o6_loadCursor'),
     # 0x03: xparam('o7_loadCursor'),
-    0x09: xparam('o6_assign'),
+    0x09: fparam('o6_assign', o6_assign),
     0x0B: xparam('oPlaytoons_printText'),
     0x11: xparam('o7_printText'),
 	0x19: xparam('o6_removeHotspot'),
