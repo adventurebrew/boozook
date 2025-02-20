@@ -1362,7 +1362,7 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
 	0x33: fparam('o6_fillRect', reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr),
     0x34: xparam('o7_getFreeDiskSpace', reads_uint16le),
     # 0x33: xparam('o7_fillRect'),
-    0x3F: xparam('oPlaytoons_checkData'),
+    0x3F: fparam('oPlaytoons_checkData', read_expr, read_var_index),
     # 0x3F: xparam('o7_checkData'),
     0x34: xparam('o7_drawLine'),
     0x36: xparam('o7_invalidate'),
