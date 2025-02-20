@@ -385,6 +385,20 @@ def o6_assign(scf):
 def reads_uint8(stream):
     return ord(stream.read(1))
 
+def o6_loadCursor(scf):
+    id = reads_uint16le(scf)
+    printl(f"{id}")
+
+    if id == -1:
+        printl(f"{peek_uint8(scf)}")
+        printl(f"{reads_uint16le(scf)}")
+        printl(f"{reads_uint8(scf)}")
+    elif id == -2:
+        printl(f"{reads_uint16le(scf)}")
+        printl(f"{reads_uint16le(scf)}")
+        printl(f"{reads_uint8(scf)}")
+    else:
+        printl(f"{reads_uint8(scf)}")
 
 def video_o2_loadMult(scf):
     iid = reads_uint16le(scf)
@@ -1312,7 +1326,7 @@ gob5_ops = {
 
 gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     **gob3_ops,
-    0x03: xparam('o6_loadCursor'),
+    0x03: fparam('o6_loadCursor', o6_loadCursor),
     # 0x03: xparam('o7_loadCursor'),
     0x09: fparam('o6_assign', o6_assign),
     0x0B: xparam('oPlaytoons_printText'),
