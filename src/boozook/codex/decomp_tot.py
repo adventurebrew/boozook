@@ -380,7 +380,33 @@ def o6_assign(scf):
     else:
         expr = read_expr(scf)
         printl("{} = {};".format(var_index, expr))
-	    
+
+def oPlaytoons_printText(scf):
+    
+    print(f"{read_expr()}, ", end="")
+    print(f"{read_expr()}, ", end="")
+    print(f"{read_expr()}, ", end="")
+    print(f"{read_expr()}, ", end="")
+    print(f"{read_expr()}", end="")
+    
+    while True:
+        print(", \"", end="")
+        i = 0
+        while (peek_uint8() != ord('.') and peek_uint8() != 200):
+            print(chr(reads_uint8()), end="")
+            i += 1
+        
+        if peek_uint8() != 200:
+            print("\", ", end="")
+            switch_value = peek_uint8()
+            if switch_value in {16, 17, 18, 23, 24, 25, 26, 27, 28}:
+                print(read_var_index(), end="")
+
+        else:
+            print("\"", end="")
+        
+        if peek_uint8() == 200:
+            break
 
 def reads_uint8(stream):
     return ord(stream.read(1))
@@ -1329,7 +1355,7 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0x03: fparam('o6_loadCursor', o6_loadCursor),
     # 0x03: xparam('o7_loadCursor'),
     0x09: fparam('o6_assign', o6_assign),
-    0x0B: xparam('oPlaytoons_printText'),
+    0x0B: fparam('oPlaytoons_printText', oPlaytoons_printText),
     0x11: xparam('o7_printText'),
 	0x19: fparam('o6_removeHotspot', read_expr),
     0x8C: xparam('o7_getSystemProperty', read_expr, read_var_index),
