@@ -883,7 +883,7 @@ def read_block(scf):
 
 def evaluate_new(scf):
     typ = scf.read(1)[0]
-    print('TYP', typ)
+    printl('TYP', typ)
     if typ & 0x40:
         typ -= 0x40
         num = scf.read(1)[0]
@@ -898,7 +898,7 @@ def evaluate_new(scf):
         width = reads_uint16le(scf)
         height = reads_uint16le(scf)
     typ &= 0x7F
-    print('HOTSPOT', typ, left, top, width, height)
+    printl('HOTSPOT', typ, left, top, width, height)
     if typ in {11, 12}:
         _skip = scf.read(6)
         func_block(scf, 2)
