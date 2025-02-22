@@ -1309,7 +1309,7 @@ gob3_ops = {  # version 51 - Gob3, Adibou1, Inca2, Woodruff, Dynasty
     **gob2_ops,
     0x22: fparam('o3_speakerOn', read_expr),
     0x23: fparam('o3_speakerOff'),
-    0x25: xparam('oInca2_spaceShooter'),
+    0x25: fparam('oInca2_spaceShooter'),
     0x32: fparam('o3_copySprite', reads_uint16le, reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le),
 }
 
