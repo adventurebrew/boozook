@@ -1603,7 +1603,7 @@ def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
         # TODO: could it be used to automatically detect optable
         prever = ctx.get('ver_script')
         if prever is not None and prever != tot_file[41]:
-            print('Warning: Script version mismatch', prever, tot_file[41])
+            print(f'Warning: Script version mismatch: {prever} ({tot_file[41]})')
         ctx['ver_script'] = tot_file[41]
         print('Script version', ctx['ver_script'], tot_file[0x3d])
 
