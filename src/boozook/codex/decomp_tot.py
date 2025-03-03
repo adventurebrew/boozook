@@ -1199,20 +1199,6 @@ adibou1_ops = {
     11: xparam('oAdibou1_listApplications'),
 }
 
-bargon_ops = {
-    0x00: xparam('oBargon_intro0'),
-    0x01: xparam('oBargon_intro1'),
-    0x02: xparam('oBargon_intro2'),
-    0x03: xparam('oBargon_intro3'),
-    0x04: xparam('oBargon_intro4'),
-    0x05: xparam('oBargon_intro5'),
-    0x06: xparam('oBargon_intro6'),
-    0x07: xparam('oBargon_intro7'),
-    0x08: xparam('oBargon_intro8'),
-    0x09: xparam('oBargon_intro9'),
-    0x10: xparam('oBargon_NOP')
-}
-
 gob1_ops = { # version 49 - Gob1, Bargon, Fascination, LittleRed
     0x00: gparam('o1_callSub'),
     0x01: gparam('o1_callSub'),
@@ -1272,6 +1258,17 @@ gob1_ops = { # version 49 - Gob1, Bargon, Fascination, LittleRed
     0x4D: fparam('o1_readData', read_expr, read_var_index, read_expr, read_expr),
     0x4E: fparam('o1_writeData', read_expr, read_var_index, read_expr, read_expr),
     0x4F: fparam('o1_manageDataFile', read_expr),
+    0x00: fparam('oBargon_intro0'),
+    0x01: fparam('oBargon_intro1'),
+    0x02: fparam('oBargon_intro2'),
+    0x03: fparam('oBargon_intro3'),
+    0x04: fparam('oBargon_intro4'),
+    0x05: fparam('oBargon_intro5'),
+    0x06: fparam('oBargon_intro6'),
+    0x07: fparam('oBargon_intro7'),
+    0x08: fparam('oBargon_intro8'),
+    0x09: fparam('oBargon_intro9'),
+    0x10: fparam('oBargon_NOP'),
 }
 
 
@@ -1329,7 +1326,7 @@ gob3_ops = {  # version 51 - Gob3, Adibou1, Inca2, Woodruff, Dynasty
     0x03: xparam('o5_getSystemCPUSpeed', read_uint16le),
     0x04: xparam('o5_getSystemDrawSpeed', read_uint16le),
     0x05: xparam('o5_totalSystemSpecs', read_uint16le),
-    0x06: xparam('o5_saveSystemSpecs'),
+    0x06: fparam('o5_saveSystemSpecs'),
     0x07: xparam('o5_loadSystemSpecs'),
     0x08: xparam('o5_gob92', read_uint16le),
     0x09: xparam('o5_gob95', read_uint16le, read_uint16le, read_uint16le, read_uint16le),
