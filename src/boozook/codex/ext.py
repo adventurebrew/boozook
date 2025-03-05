@@ -1,3 +1,4 @@
+from collections import defaultdict
 import io
 import itertools
 from pathlib import Path
@@ -328,6 +329,9 @@ def get_communs_offset_map(im_data: dict[str, bytes]) -> dict[str, dict[int, byt
     return im_data_offs
 
 
+commun_ex_data = defaultdict(dict)
+
+
 def compose(game: GameBase, entry: ArchivePath, target: str | Path):
     target = Path(target)
     reses = {}
@@ -347,12 +351,7 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
 
     com_data = {}
     for com_pattern, com_entry in game.search(['COMMUN.EX*']):
-        for fname, alias in game._patched:
-            if com_entry.name == alias:
-                com_data[com_entry.name] = game._patched[(fname, alias)]
-                break
-        else:
-            com_data[com_entry.name] = com_entry.read_bytes()
+        com_data[com_entry.name] = com_entry.read_bytes()
 
     im_data = {}
     for im_patten, im_entry in game.search(['COMMUN.IM*']):
@@ -364,6 +363,9 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
             im_data[im_entry.name] = im_entry.read_bytes()
 
     im_data_offs = get_communs_offset_map(im_data)
+
+    ex_data = commun_ex_data[f'COMMUN.EX{efn}']
+    commun_ex_dirty = False
 
     for ext, res_data in reses.items():
 
@@ -440,60 +442,89 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
 
                     else:
                         print('EX RESOURCE')
-                        print(~offset, com_data[f'COMMUN.EX{efn}'][:~offset])
-                        com_im = com_data[f'COMMUN.EX{efn}']
-                        with io.BytesIO(com_im) as stream:
-                            assert ~offset == -(offset + 1)
-                            stream.seek(~offset)
-                            assert size > 0, size
-                            if packed:
-                                uncompressed_size = reads_uint32le(stream)
-                                data = unpack_chunk(stream, uncompressed_size)
-                            else:
-                                data = stream.read(size)
-                                if len(data) != size:
-                                    print('WARNING: Reading EX out of bounds')
-                                    continue
+                        assert ~offset in ex_data or all(off < ~offset for off in ex_data), (f'COMMUN.EX{efn}', ~offset, ex_data.keys())
+                        if ~offset not in ex_data:
+                            commun_ex_dirty = True
+                            print(~offset, com_data[f'COMMUN.EX{efn}'][:~offset])
+                            com_im = com_data[f'COMMUN.EX{efn}']
+                            with io.BytesIO(com_im) as stream:
+                                assert ~offset == -(offset + 1)
+                                print(f'COMMUN.EX{efn}', 'EX OFFSET', ~offset)
+                                stream.seek(~offset)
+                                assert size > 0, size
+                                if packed:
+                                    pos = stream.tell()
+                                    uncompressed_size = reads_uint32le(stream)
+                                    data = unpack_chunk(stream, uncompressed_size)
+                                    assert size == len(data) == uncompressed_size or size == stream.tell() - pos, (size, len(data), uncompressed_size, stream.tell() - pos)
+                                else:
+                                    data = stream.read(size)
+                                    if len(data) != size:
+                                        raise ValueError('Reading EX out of bounds')
+                                        print('WARNING: Reading EX out of bounds')
+                                        continue
 
-                            # compress EXT
-                            inject_pic = target / f'{entry.stem}.{ext}_{idx}.png'
-                            if not (inject_pic.exists() and width and height):
-                                print('NO TARGET', inject_pic, width, height)
-                                continue
+                                ex_data[~offset] = (data, size, False, f'{entry.stem}.{ext}_{idx}')
 
-                            img_data = np.asarray(Image.open(inject_pic)).ravel()
-                            im_type = None
+                                # compress EXT
+                                inject_pic = target / f'{entry.stem}.{ext}_{idx}.png'
+                                if inject_pic.exists() and width and height:
 
-                            print('COMPRESSION', *data[:3])
-                            if data[:2] == b'\x01\x02':
-                                im_type = 'UNCOMPRESS'
-                                print(im_type, entry.name, idx)
-                                im = uncompress_sprite(data[2:], width, height)
-                            else:
-                                im_type = 'UNPACK'
-                                print(im_type, entry.name, idx)
-                                im = unpack_sprite(data, width, height)
+                                    img_data = np.asarray(Image.open(inject_pic)).ravel()
+                                    im_type = None
 
-                            print(ext, inject_pic, width, height)
+                                    print('COMPRESSION', *data[:3])
+                                    if data[:2] == b'\x01\x02':
+                                        im_type = 'UNCOMPRESS'
+                                        print(im_type, entry.name, idx)
+                                        im = uncompress_sprite(data[2:], width, height)
+                                    else:
+                                        im_type = 'UNPACK'
+                                        print(im_type, entry.name, idx)
+                                        im = unpack_sprite(data, width, height)
 
-                            orig_data = data
+                                    print(ext, inject_pic, width, height)
 
-                            if not np.array_equal(im, img_data):
-                                print('ENCODING NEW COMMUN.EX IMAGE')
-                                print('WARNING: COMMUN.EX not supported for inject')
-                                if len(img_data) != width * height:
-                                    raise ValueError(len(img_data), width * height)
-                                data = {
-                                    'UNCOMPRESS': compress_sprite,
-                                    'UNPACK': pack_sprite,
-                                }[im_type](img_data)
+                                    orig_data = data
 
-                            assert data == orig_data, (data[:100], orig_data[:100])
+                                    if not np.array_equal(im, img_data):
+                                        print('ENCODING NEW COMMUN.EX IMAGE')
+                                        if len(img_data) != width * height:
+                                            raise ValueError(len(img_data), width * height)
+                                        data = {
+                                            'UNCOMPRESS': compress_sprite,
+                                            'UNPACK': pack_sprite,
+                                        }[im_type](img_data)
 
-                            if packed:
-                                print('PACKED')
-                                data = pack_content(data)
-
+                                    assert data == orig_data, (data[:100], orig_data[:100])
+                                    # # Force not packed because we can't tell if size should be compressed or uncompressed
+                                    # if packed:
+                                    #     print('PACKED')
+                                    #     data1 = pack_content(data)
+                                    #     with io.BytesIO(data1) as stream:
+                                    #         uncompressed_size = reads_uint32le(stream)
+                                    #         data2 = unpack_chunk(stream, uncompressed_size)
+                                    #         assert data == data2, (data[:100], data2[:100])
+                                    #         assert uncompressed_size == size, (uncompressed_size, size)
+                                    #     data = data1
+                                    ex_data[~offset] = (data, size, False, f'{entry.stem}.{ext}_{idx}')
+                                assert ~int.from_bytes(outfile[-10:-6], byteorder='little', signed=True) == ~offset, (
+                                    ~int.from_bytes(outfile[-10:-6], byteorder='little', signed=True),
+                                    ~offset,
+                                )
+                        else:
+                            print('REUSING', f'COMMUN.EX{efn}', ~offset, 'FROM', ex_data[~offset][1])
+                        real_off = 0
+                        for off, (dat, size, packed, _) in ex_data.items():
+                            if off >= ~offset:
+                                break
+                            real_off += len(dat)
+                        else:
+                            raise ValueError('Entry should have been created already')
+                        print('REAL OFF', real_off)
+                        outfile[-10:-6] = (~real_off).to_bytes(4, byteorder='little', signed=True)
+                        outfile[-6:-4] = size.to_bytes(2, byteorder='little', signed=False)
+                        outfile[-4:-2] = (width | 0x8000 * int(packed)).to_bytes(2, byteorder='little', signed=False)
                     continue
                     # raise ValueError('commun not supported for inject')
                 else:
@@ -577,6 +608,9 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
 
             commun_ovrrd = b''.join(off.to_bytes(4, 'little') for off in offs[:-1]) + imdataout
             game.patch(name, commun_ovrrd)
+
+        if commun_ex_dirty:
+            game.patch(f'COMMUN.EX{efn}', b''.join(data for data, _, _, _ in ex_data.values()))
 
         game.patch(f'{entry.stem}.{ext}', outfile + outdata)
 
