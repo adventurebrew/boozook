@@ -1304,7 +1304,7 @@ gob3_ops = {  # version 51 - Gob3, Adibou1, Inca2, Woodruff, Dynasty
     0x25: fparam('oInca2_spaceShooter'),
     0x32: fparam('o3_copySprite', reads_uint16le, reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le),
     0x44: xparam('o4_draw0x44', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
-    0x45: xparam('o4_draw0x45', read_expr, read_expr),
+    0x45: fparam('o4_draw0x45', read_expr, read_expr),
     0x57: xparam('o4_draw0x57', read_var_index, read_var_index),
     0x44: xparam('o4_playVmdOrMusic', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
     0x8A: xparam('o4_draw0x8A', read_expr, read_var_index, read_var_index),
