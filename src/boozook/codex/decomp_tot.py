@@ -1191,14 +1191,6 @@ def oGeisha_goblinFunc(scf):
     gfunc(scf)
 
 
-adibou1_ops = {
-    0: xparam('oAdibou1_writeSprite'),
-    1: xparam('oAdibou1_readSprite'),
-    2: xparam('oAdibou1_fillAreaAtPoint'),
-    10: xparam('oAdibou1_getAppliNameFromId'),
-    11: xparam('oAdibou1_listApplications'),
-}
-
 bargon_ops = {
     0x00: xparam('oBargon_intro0'),
     0x01: xparam('oBargon_intro1'),
