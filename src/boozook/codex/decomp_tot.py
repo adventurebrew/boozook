@@ -1303,10 +1303,6 @@ gob3_ops = {  # version 51 - Gob3, Adibou1, Inca2, Woodruff, Dynasty
     0x23: fparam('o3_speakerOff'),
     0x25: fparam('oInca2_spaceShooter'),
     0x32: fparam('o3_copySprite', reads_uint16le, reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le),
-}
-
-gob4_ops = {
-    **gob3_ops,
     0x44: xparam('o4_draw0x44', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
     0x45: xparam('o4_draw0x45', read_expr, read_expr),
     0x57: xparam('o4_draw0x57', read_var_index, read_var_index),
@@ -1317,11 +1313,11 @@ gob4_ops = {
     0xA1: xparam('o4_draw0xA1', read_expr, read_expr, read_expr, read_expr, read_var_index),
     0xA2: xparam('o4_draw0xA2', read_expr, read_expr, read_expr, read_expr),
     0xA4: xparam('o4_draw0xA4', read_expr, read_expr, read_expr),
-
 }
 
+
 gob5_ops = {
-    **gob4_ops,
+    **gob3_ops,
     0x60: xparam('o5_deleteFile', read_expr),
     0x45: gparam('o5_istrlen'),
     0x00: gparam('o5_spaceShooter'),
