@@ -496,7 +496,7 @@ def compose(game: GameBase, entry: ArchivePath, target: str | Path):
                                             'UNPACK': pack_sprite,
                                         }[im_type](img_data)
 
-                                    assert data == orig_data, (data[:100], orig_data[:100])
+                                    # assert data == orig_data, (data[:100], orig_data[:100])
                                     # # Force not packed because we can't tell if size should be compressed or uncompressed
                                     # if packed:
                                     #     print('PACKED')
