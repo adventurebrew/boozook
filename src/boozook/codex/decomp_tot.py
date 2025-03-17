@@ -1542,6 +1542,10 @@ optables = {
 
 
 def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
+    # Check if the provided directory is exactly 'extracted/'
+    if os.path.abspath(gamedir) == os.path.abspath('extracted/'):
+        print("Please provide a valid directory path which use the STK extension.\nLike extracted/INTRO.STK\n")
+        return
     game = archive.open_game(gamedir)
 
     decoders = defaultdict(lambda: CodePageEncoder('cp850'))
