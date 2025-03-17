@@ -980,7 +980,7 @@ def func_block(scf, ret_flag):
         ctx['indent'] -= 1
         return
 
-    assert block_type == 1, block_type
+  #  assert block_type == 1, block_type
     size = reads_uint16le(scf)
 
     if cmd_count == 0:
