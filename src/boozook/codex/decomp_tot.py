@@ -1426,7 +1426,6 @@ named_variables = {
     'var8_2972': 'cheatCodes',
     'var32_268': 'g_language',
     'var8_272': 'manageData',
-    'var32_872': 'selectCATFile',
     'var8_13868': 'loadEMAJ',
     'var8_15748': 'characterFingus',
     'var8_15788': 'characterWinkle',
@@ -1434,9 +1433,7 @@ named_variables = {
     'var32_1904': 'clickableText',
     'var32_5688': 'flowers',
     'var8_2388': 'dessinConf',
-    'var32_248': 'langaugeFiles',
     'var32_6516': 'isGerman',
-    'var32_228': 'useTextLang',
     'var32_1888': 'compressedTOT',
 }
 
