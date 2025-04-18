@@ -1062,10 +1062,10 @@ def o1_assign(scf):
     printl('{} = {}'.format(read_var_index(scf), read_expr(scf)))
 
 
-def o1_setcmdCount(scf):
+def o1_setCmdCount(scf):
     ctx['cmd_count'] = reads_uint8(scf)
     ctx['counter'] = 0
-    printl('o1_setcmdCount', ctx['cmd_count'])
+    printl('o1_setCmdCount', ctx['cmd_count'])
 
 def o1_loadSound(scf):
     slot = read_expr(scf)
@@ -1224,7 +1224,7 @@ gob1_ops = { # version 49 - Gob1, Bargon, Fascination, LittleRed
     0x16: fparam('o1_capturePop'),
     0x17: fparam('o1_animPalInit', reads_uint16le, read_expr, read_expr),
     0x1E: gparam('o1_drawOperations'),
-    0x1F: gparam('o1_setcmdCount'),
+    0x1F: gparam('o1_setCmdCount'),
     0x20: fparam('o1_return'),
     0x21: fparam('o1_renewTimeInVars'),
     0x22: fparam('o1_speakerOn', read_expr),
