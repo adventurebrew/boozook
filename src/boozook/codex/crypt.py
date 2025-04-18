@@ -18,7 +18,11 @@ class CodePageEncoder:
     errors: str = 'strict'
 
     def decode(self, text: bytes) -> str:
-        return text.decode(**asdict(self))
+        try:
+            return text.decode(**asdict(self))
+        except UnicodeDecodeError:
+            fallback_encoding = 'windows-1255'
+            return text.decode(fallback_encoding, errors='replace')
 
     def encode(self, text: str) -> bytes:
         return text.encode(**asdict(self))
