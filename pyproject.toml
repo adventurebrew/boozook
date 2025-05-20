@@ -6,7 +6,7 @@ authors = ["BLooperZ <blooperz@users.noreply.github.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"
+python = ">=3.12"
 pakal = {git = "https://github.com/adventurebrew/pakal.git"}
 numpy = "^2.1.3"
 pillow = "^10.3.0"
@@ -18,8 +18,8 @@ black = "^23.3.0"
 
 
 [tool.poetry.group.release.dependencies]
-pyinstaller = "^6.2.0"
-pip-licenses = "^4.3.3"
+pyinstaller = {version = ">=6.13.0", markers = "python_version < '3.14'"}
+pip-licenses = "^5.0.0"
 
 [tool.poetry.scripts]
 boozook = "boozook.runner:main"
