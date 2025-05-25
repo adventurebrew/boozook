@@ -26,9 +26,10 @@ from boozook.totfile import (
 )
 
 
-def peek_uint8(scf):
+def peek_uint8(scf, offset=0):
+    scf.seek(offset, io.SEEK_CUR)
     res = ord(scf.read(1))
-    scf.seek(-1, 1)
+    scf.seek(-1 - offset, 1)
     return res
 
 
@@ -83,6 +84,7 @@ def read_expr(scf, stop=99):
 
         # var_base = 0
         while operation in {14, 15}:
+            # Add a direct offset
             if operation == 14:
                 expr += '#{:d}#'.format(read_uint16le(scf.read(2)) * 4)
 
@@ -91,6 +93,7 @@ def read_expr(scf, stop=99):
                     _skip = scf.read(1)
 
             elif operation == 15:
+                # Add an offset from an array
                 expr += '#{:d}->'.format(read_uint16le(scf.read(2)) * 4)
 
                 offset1 = read_uint16le(scf.read(2))
@@ -147,9 +150,7 @@ def read_expr(scf, stop=99):
                 arr_desc = scf.read(dim_count)
                 offset = 0
                 for dim in range(dim_count):
-                    expr += read_expr(scf, 12) + ' of {:d}'.format(
-                        read_uint16le(arr_desc[2 * dim : 2 * (dim + 1)])
-                    )
+                    expr += read_expr(scf, 12) + ' of {:d}'.format(arr_desc[dim])
                     if dim < dim_count - 1:
                         expr += ']['
                 expr += ']'
@@ -204,15 +205,14 @@ def read_expr(scf, stop=99):
 
 @paren
 def read_var_index(scf):
-    num = 0
     expr = ''
     pref = ''
-
-    operation = ord(scf.read(1))
+    operation = reads_uint8(scf)
 
     # var_base = 0
     while operation in {14, 15}:
         if operation == 14:
+            # Add a direct offset
             pref += '#{:d}#'.format(read_uint16le(scf.read(2)) * 4)
 
             ctx['var_size'] = reads_uint16le(scf)
@@ -220,17 +220,18 @@ def read_var_index(scf):
             if peek_uint8(scf) == 97:
                 _skip = scf.read(1)
             else:
-                return expr
+                return pref
 
         elif operation == 15:
-            pref += '#{:d}->'.format(read_uint16le(scf.read(2)) * 4)
+            # Add an offset from an array
+            pref += '#{:d}->'.format(reads_uint16le(scf) * 4)
 
-            offset1 = read_uint16le(scf.read(2))
+            offset1 = reads_uint16le(scf)
 
             ctx['var_size'] = offset1
             ctx['var_type'] = operation
 
-            dim_count = scf.read(1)[0]
+            dim_count = reads_uint8(scf)
             dim_array = scf.read(dim_count)
 
             for i in range(dim_count):
@@ -241,9 +242,9 @@ def read_var_index(scf):
             if peek_uint8(scf) == 97:
                 _skip = scf.read(1)
             else:
-                return expr
+                return pref
 
-        operation = scf.read(1)[0]
+        operation = reads_uint8(scf)
 
     ctx['var_size'] = 0
     ctx['var_type'] = operation
@@ -282,9 +283,7 @@ def read_var_index(scf):
         dim_count = scf.read(1)[0]
         arr_desc = scf.read(dim_count)
         for dim in range(dim_count):
-            expr += read_expr(scf, 12) + ' of {:d}'.format(
-                read_uint16le(arr_desc[2 * dim : 2 * (dim + 1)])
-            )
+            expr += read_expr(scf, 12) + ' of {:d}'.format(arr_desc[dim])
             if dim < dim_count - 1:
                 expr += ']['
         expr += ']'
@@ -303,7 +302,7 @@ def read_var_index(scf):
 
 def xparam(name, *params):
     def inner(scf):
-        raise NotImplementedError(f"Unimplemented opcode: {name}")
+        raise NotImplementedError(f'Unimplemented opcode: {name}')
 
     return inner
 
@@ -346,18 +345,18 @@ def o2_assign(scf):
         DIVERGE_FROM_DEGOB = True
         if DIVERGE_FROM_DEGOB:
             expr = ', '.join(read_expr(scf) for _ in range(loop_count))
-            printl("{} = [{}]".format(var_index, expr))
+            printl('{} = [{}]'.format(var_index, expr))
         else:
             for i in range(loop_count):
                 expr = read_expr(scf)
                 printl(
-                    "{}[{}] = {}".format(
+                    '{}[{}] = {}'.format(
                         var_index, i * 2 if dest_type == 24 else i, expr
                     )
                 )
     else:
         expr = read_expr(scf)
-        printl("{} = {}".format(var_index, expr))
+        printl('{} = {}'.format(var_index, expr))
 
 
 def o6_assign(scf):
@@ -365,27 +364,16 @@ def o6_assign(scf):
     var_index = read_var_index(scf)
 
     if ctx['var_size'] != 0:
-        pos = scf.tell()
-        var_index2 = read_var_index(scf)
-
-        printl(f"memcpy({var_index}, {var_index2}, {ctx["var_size"]});")
-
-        scf.seek(pos, io.SEEK_SET)
-        read_expr(scf)
+        printl('copy', read_expr(scf), var_index)
         return
 
     if peek_uint8(scf) == 98:
         _skip = scf.read(1)
         loop_count = scf.read(1)[0]
 
-        off = 0
-        for _ in range(loop_count):
-            c = scf.read(1)[0]
-            n = reads_uint16le(scf)
-
-            printl("memset({} + {}, {}, {});".format(var_index, off, c, n))
-
-            off += n
+        rles = [(ord(scf.read(1)), reads_uint16le(scf)) for _ in range(loop_count)]
+        rles_str = '+'.join('[{}]*{}'.format(c, n) for c, n in rles)
+        printl('{} = RLE({})'.format(var_index, rles_str))
     elif peek_uint8(scf) == 99:
         _skip = scf.read(1)
         loop_count = scf.read(1)[0]
@@ -393,36 +381,46 @@ def o6_assign(scf):
         DIVERGE_FROM_DEGOB = True
         if DIVERGE_FROM_DEGOB:
             expr = ', '.join(read_expr(scf) for _ in range(loop_count))
-            printl("{} = [{}]".format(var_index, expr))
+            printl('{} = [{}]'.format(var_index, expr))
         else:
             for i in range(loop_count):
                 expr = read_expr(scf)
                 printl(
-                    "{}[{}] = {}".format(
+                    '{}[{}] = {}'.format(
                         var_index, i * 2 if dest_type == 24 else i, expr
                     )
                 )
     else:
         expr = read_expr(scf)
-        printl("{} = {}".format(var_index, expr))
+        printl('{} = {}'.format(var_index, expr))
+
 
 def o6_createSprite(scf):
-    _skip = scf.read(1)
-    if peek_uint8(scf) == 0:
-        scf.seek(-1, io.SEEK_CUR)
-        printl('o6_createSprite', reads_uint16le(scf), reads_uint16le(scf), reads_uint16le(scf), reads_uint16le(scf))
+    if peek_uint8(scf, 1) == 0:
+        printl(
+            'o6_createSprite',
+            reads_uint16le(scf),
+            reads_uint16le(scf),
+            reads_uint16le(scf),
+            reads_uint16le(scf),
+        )
     else:
-        scf.seek(-1, io.SEEK_CUR)
-        printl('o6_createSprite', read_expr(scf), read_expr(scf), read_expr(scf), reads_uint16le(scf))
+        printl(
+            'o6_createSprite',
+            read_expr(scf),
+            read_expr(scf),
+            read_expr(scf),
+            reads_uint16le(scf),
+        )
+
 
 def oPlaytoons_printText(scf):
     exprs = [read_expr(scf) for _ in range(5)]
-    
-    while True:
 
+    while True:
         exprs.append('\\')
         msg = b''
-        while (peek_uint8(scf) != ord('.') and peek_uint8(scf) != 200):
+        while peek_uint8(scf) != ord('.') and peek_uint8(scf) != 200:
             msg += scf.read(1)
 
         exprs.append(msg)
@@ -441,29 +439,37 @@ def oPlaytoons_printText(scf):
     printl('oPlaytoons_printText', *exprs)
     _skip = scf.read(1)
 
+
 def reads_uint8(stream):
     return ord(stream.read(1))
+
 
 def o6_loadCursor(scf):
     id = reads_uint16le(scf)
 
     if id == 65535:
         msg = scf.read(9).decode('ascii')
-        printl('o6_loadCursor', id, msg.split('\0'), reads_uint16le(scf), reads_uint8(scf))
+        printl(
+            'o6_loadCursor', id, msg.split('\0'), reads_uint16le(scf), reads_uint8(scf)
+        )
     elif id == 65534:
-        printl('o6_loadCursor', id, reads_uint16le(scf), reads_uint16le(scf), reads_uint8(scf))
+        printl(
+            'o6_loadCursor',
+            id,
+            reads_uint16le(scf),
+            reads_uint16le(scf),
+            reads_uint8(scf),
+        )
     else:
         printl('o6_loadCursor', id, reads_uint8(scf))
 
 
 def oPlaytoons_freeSprite(scf):
-    _skip = scf.read(1)
-    if peek_uint8(scf) == 0:
-        scf.seek(-1, io.SEEK_CUR)
+    if peek_uint8(scf, 1) == 0:
         printl('oPlaytoons_freeSprite', reads_uint16le(scf))
     else:
-        scf.seek(-1, io.SEEK_CUR)
         printl('oPlaytoons_freeSprite', read_expr(scf))
+
 
 def video_o2_loadMult(scf):
     iid = reads_uint16le(scf)
@@ -472,7 +478,10 @@ def video_o2_loadMult(scf):
         _skip = scf.read(1)
 
     data = read_ext_item(
-        ctx['ext_items'], iid - 30000, ctx['ext_data'], ctx['com_entry'] and ctx['com_data'][ctx['com_entry'].name]
+        ctx['ext_items'],
+        iid - 30000,
+        ctx['ext_data'],
+        ctx['com_entry'] and ctx['com_data'][ctx['com_entry'].name],
     )
 
     with io.BytesIO(data) as stream:
@@ -611,7 +620,7 @@ def video_o2_pushVars(scf):
 def video_o2_popVars(scf):
     count = reads_uint8(scf)
     params = [read_var_index(scf) for _ in range(count)]
-    return (f'{params};')
+    return f'{params};'
 
 
 def video_o2_playMult(scf):
@@ -633,40 +642,83 @@ def lvparam(name, lfunc):
     return inner
 
 
-def cparam(name, *params):
-    def inner(scf):
-        printl(f'(G) {name}', *(param(scf) for param in params))
-
-    return inner
-
-
-def lcparam(name, lfunc):
-    def inner(scf):
-        printl(f'(G) {name}', *lfunc(scf))
-
-    return inner
-
-
 video_ops = {
     0x00: lvparam('o2_loadMult', video_o2_loadMult),
     0x01: lvparam('o2_playMult', video_o2_playMult),
     0x02: vparam('o2_freeMultKeys', reads_uint16le),
-    0x07: vparam('o1_initCursor', read_var_index, read_var_index, reads_uint16le, reads_uint16le, reads_uint16le),
-    0x08: vparam('o1_initCursorAnim', read_expr, reads_uint16le, reads_uint16le, reads_uint16le),
+    0x03: vparam(
+        'oFascin_setWinSize',
+        reads_uint16le,
+        reads_uint16le,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+    ),
+    0x04: vparam('oFascin_closeWin', read_expr),
+    0x06: vparam('oFascin_openWin', read_expr, read_var_index),
+    0x07: vparam(
+        'o1_initCursor',
+        read_var_index,
+        read_var_index,
+        reads_uint16le,
+        reads_uint16le,
+        reads_uint16le,
+    ),
+    0x08: vparam(
+        'o1_initCursorAnim', read_expr, reads_uint16le, reads_uint16le, reads_uint16le
+    ),
     0x09: vparam('o1_clearCursorAnim', read_expr),
     0x0A: vparam('o2_setRenderFlags', read_expr),
+    0x0B: vparam('oFascin_setWinFlags', read_expr),
     0x0C: vparam('o7_draw0x0C'),
     0x0D: vparam('o7_setCursorToLoadFromExec', read_expr, read_expr),
     0x10: lvparam('o1_loadAnim', video_o1_loadAnim),
     0x11: vparam('o1_freeAnim', read_expr),
-    0x12: vparam('o1_updateAnim', read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le),
+    0x12: vparam(
+        'o1_updateAnim',
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        reads_uint16le,
+    ),
     0x13: vparam('o2_multSub', read_expr, read_expr, read_expr, read_expr, read_expr),
-    0x14: vparam('o2_initMult', reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le, read_var_index, read_var_index, read_var_index),
+    0x14: vparam(
+        'o2_initMult',
+        reads_uint16le,
+        reads_uint16le,
+        reads_uint16le,
+        reads_uint16le,
+        reads_uint16le,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+    ),
     0x15: vparam('o1_freeMult'),
     0x16: vparam('o1_animate'),
     0x17: lvparam('o2_loadMultObject', video_o2_loadMultObject),
-    0x18: vparam('o1_getAnimLayerInfo', read_expr, read_expr, read_var_index, read_var_index, read_var_index, read_var_index),
-    0x19: vparam('o1_getObjAnimSize', read_expr, read_var_index, read_var_index, read_var_index, read_var_index),
+    0x18: vparam(
+        'o1_getAnimLayerInfo',
+        read_expr,
+        read_expr,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+    ),
+    0x19: vparam(
+        'o1_getObjAnimSize',
+        read_expr,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+    ),
     0x1A: lvparam('o1_loadStatic', video_o1_loadStatic),
     0x1B: vparam('o1_freeStatic', read_expr),
     0x1C: vparam('o2_renderStatic', read_expr, read_expr),
@@ -677,13 +729,23 @@ video_ops = {
     0x23: vparam('o2_readLIC', read_expr),
     0x24: vparam('o2_freeLIC'),
     0x25: vparam('o2_getCDTrackPos', read_var_index, read_var_index),
-    0x30: vparam('o2_loadFontToSprite', reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le),
+    0x30: vparam(
+        'o2_loadFontToSprite',
+        reads_uint16le,
+        reads_uint16le,
+        reads_uint16le,
+        reads_uint16le,
+        reads_uint16le,
+    ),
     0x31: vparam('o1_freeFontToSprite', reads_uint16le),
     0x40: vparam('o2_totSub', video_o2_totSub),
     0x41: vparam('o2_switchTotSub', reads_uint16le, reads_uint16le),
     0x42: lvparam('o2_pushVars', video_o2_pushVars),
     0x43: vparam('o2_popVars', video_o2_popVars),
-    0x44: vparam('o7_displayWarning', read_expr, read_expr, read_expr, read_expr, read_expr),
+    0x44: vparam(
+        'o7_displayWarning', read_expr, read_expr, read_expr, read_expr, read_expr
+    ),
+    0x45: vparam('o7_logString', read_expr, read_expr),
     0x50: lvparam('o2_loadMapObjects', video_o2_loadMapObjects),
     0x51: vparam('o2_freeGoblins'),
     0x52: vparam('o2_moveGoblin', read_expr, read_expr, read_expr),
@@ -692,21 +754,71 @@ video_ops = {
     0x55: vparam('o2_setGoblinState', read_expr, read_expr, read_expr),
     0x56: vparam('o2_placeGoblin', read_expr, read_expr, read_expr, read_expr),
     0x57: vparam('o7_intToString', read_var_index, read_var_index),
+    0x59: vparam('o7_callFunction', read_expr, read_expr, read_expr),
+    0x5A: vparam('o7_loadFunctions', read_expr, read_expr),
     0x60: vparam('o7_copyFile', read_expr, read_expr),
     0x61: vparam('o5_deleteFile', read_expr),
     0x80: vparam('o2_initScreen', reads_uint8, reads_uint8, read_expr, read_expr),
-    0x81: vparam('o2_scroll', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
+    0x81: vparam(
+        'o2_scroll', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr
+    ),
     0x82: vparam('o2_setScrollOffset', read_expr, read_expr),
-    0x83: vparam('o2_playImd', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
-    0x84: vparam('o2_getImdInfo', read_expr, read_var_index, read_var_index, read_var_index, read_var_index, read_var_index),
+    0x83: vparam(
+        'o2_playImd',
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+    ),
+    0x84: vparam(
+        'o2_getImdInfo',
+        read_expr,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+        read_var_index,
+    ),
     0x85: vparam('o2_openItk', read_expr),
     0x86: vparam('o2_closeItk'),
     0x87: vparam('o2_setImdFrontSurf'),
     0x88: vparam('o2_resetImdFrontSurf'),
-    0x90: vparam('o7_loadImage', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
-    0xA1: vparam('o7_getINIValue', read_expr, read_expr, read_expr, read_expr, read_var_index),
+    0x89: vparam('o7_setActiveCD', read_expr, read_expr),
+    0x8A: vparam('o7_findFile', read_expr, read_var_index, read_var_index),
+    0x8B: vparam('o7_findNextFile', read_var_index, read_var_index),
+    0x8C: vparam('o7_getSystemProperty', read_expr, read_var_index),
+    0x8E: vparam(
+        'o7_getImageFileInfo', read_expr, read_expr, read_var_index, read_var_index
+    ),
+    0x90: vparam(
+        'o7_loadImage',
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+    ),
+    0x93: vparam('o7_setVolume', read_expr),
+    0xA0: vparam('o7_draw0xA0', read_expr, read_var_index, read_expr),
+    0xA1: vparam(
+        'o7_getINIValue', read_expr, read_expr, read_expr, read_expr, read_var_index
+    ),
+    0xA2: vparam('o7_setINIValue', read_expr, read_expr, read_expr, read_expr),
+    0xA4: vparam('o7_loadIFFPalette', read_expr, read_expr, read_expr),
     0xC4: vparam('o7_openTranslationDB', read_expr, read_expr),
     0xC5: vparam('o7_closeTranslationDB', read_expr),
+    0xC6: vparam(
+        'o7_getDBString', read_expr, read_expr, read_expr, read_expr, read_var_index
+    ),
 }
 
 
@@ -718,134 +830,18 @@ def o1_drawOperations(scf):
     vfunc(scf)
 
 
-goblin_lookup = {
-    0: 0,
-    1: 1,
-    2: 2,
-    4: 3,
-    5: 4,
-    6: 5,
-    7: 6,
-    8: 7,
-    9: 8,
-    10: 9,
-    12: 10,
-    13: 71,
-    14: 12,
-    # 15: 13,
-    16: 14,
-    21: 15,
-    22: 16,
-    23: 17,
-    24: 18,
-    25: 19,
-    26: 20,
-    27: 21,
-    28: 22,
-    29: 23,
-    30: 24,
-    32: 25,
-    33: 26,
-    34: 27,
-    35: 28,
-    36: 29,
-    37: 30,
-    40: 31,
-    41: 32,
-    42: 33,
-    43: 34,
-    44: 35,
-    50: 36,
-    52: 37,
-    53: 38,
-    100: 39,
-    152: 40,
-    200: 41,
-    201: 42,
-    202: 43,
-    203: 44,
-    204: 45,
-    250: 46,
-    251: 47,
-    252: 48,
-    500: 49,
-    502: 50,
-    503: 51,
-    600: 52,
-    601: 53,
-    602: 54,
-    603: 55,
-    604: 56,
-    605: 57,
-    1000: 58,
-    1001: 59,
-    1002: 60,
-    1003: 61,
-    1004: 62,
-    1005: 63,
-    1006: 64,
-    1008: 65,
-    1009: 66,
-    1010: 67,
-    1011: 68,
-    1015: 69,
-    2005: 70,
-    3: 71,
-    # erroring passthorugh - ween english demo
-    11: 11,
-    3000: 3000,
-    15: 15,
-}
-
-
-def gob_o2_handleGoblins(scf):
-    return [f'var32_{reads_uint16le(scf) * 4}' for _ in range(6)]
-
-
-def gob_o1_dummy(scf):
-    scf.seek(-2, io.SEEK_CUR)
-    skip = reads_uint16le(scf)
-    return list(scf.read(skip * 2))
-
-
-def gob_o2_infogrames(scf):
-    return [f'var8_{reads_uint16le(scf) * 4}']
-
-goblin_ops = {
-    0x00: lcparam('o2_loadInfogramesIns', gob_o2_infogrames),
-    0x01: cparam('o2_startInfogrames', reads_uint16le),
-    0x02: cparam('o2_stopInfogrames', reads_uint16le),
-    0x09: lcparam('o2_playInfogrames', gob_o2_infogrames),
-    0x0B: cparam('o_weenNOP_11', reads_uint16le),
-    0x0F: cparam('o1_setRelaxTime'),
-    0x27: lcparam('o2_handleGoblins', gob_o2_handleGoblins),
-    0x47: lcparam('o1_dummy', gob_o1_dummy),
-    3000: cparam('oWeen_NOP_3000'),
-}
-
-
 def o2_goblinFunc(scf):
     cmd = reads_uint16le(scf)
-    _skip = scf.read(2)
-
-    if cmd != 101:
-        gfunc = goblin_ops.get(goblin_lookup[cmd])
-        if gfunc is None:
-            raise ValueError(f'Missing Goblin opcode 0x{hex(cmd)[2:].upper()} = {cmd}')
-        gfunc(scf)
-
-
-# goblin5_ops = {
-# 	100: cparam('o5_gob100', reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le),
-# 	200: cparam('o5_gob200'),
-# }
+    param_count = reads_uint16le(scf)
+    printl('o2_goblinFunc', cmd, *(reads_uint16le(scf) for _ in range(param_count)))
+    return
 
 
 def oInca2_goblinFunc(scf):
     cmd = reads_uint16le(scf)
     param_count = reads_uint16le(scf)
 
-    printl('o5_spaceShooter', *(reads_uint16le(scf) for _ in range(param_count)))
+    printl('oInca2_goblinFunc', cmd, *(reads_uint16le(scf) for _ in range(param_count)))
 
     # if cmd in {100, 200, 218}:
     #     gfunc = goblin5_ops.get(cmd)
@@ -887,13 +883,19 @@ def o1_repeatUntil(scf):
 
 
 def o1_whileDo(scf):
-    printl("while ({}) {{".format(read_expr(scf)))
+    printl('while ({}) {{'.format(read_expr(scf)))
     func_block(scf, 1)
     printl('}')
 
 
 def o1_loadSpriteToPos(scf):
-    printl('o1_loadSpriteToPos', reads_uint16le(scf), read_expr(scf), read_expr(scf), reads_uint8(scf))
+    printl(
+        'o1_loadSpriteToPos',
+        reads_uint16le(scf),
+        read_expr(scf),
+        read_expr(scf),
+        reads_uint8(scf),
+    )
     _skip = scf.read(1)
 
 
@@ -908,7 +910,7 @@ def o1_palLoad(scf):
 
 
 def o1_if(scf):
-    printl("if ({}) {{".format(read_expr(scf)))
+    printl('if ({}) {{'.format(read_expr(scf)))
 
     func_block(scf, 0)
 
@@ -920,7 +922,7 @@ def o1_if(scf):
 
 
 def o1_switch(scf):
-    printl("switch ({}) {{".format(read_var_index(scf)))
+    printl('switch ({}) {{'.format(read_var_index(scf)))
 
     while True:
         ln = reads_uint8(scf)
@@ -956,7 +958,8 @@ def o2_printText(scf):
     expr = ' "'
     while True:
         while peek_uint8(scf) != ord('.') and peek_uint8(scf) != 200:
-            expr += scf.read(1).decode('cp437')  # should be `SELECCCIóN DEL TIPO` in Ween english demo - REGLAGE.TOT
+            # should be `SELECCCIóN DEL TIPO` in Ween english demo - REGLAGE.TOT
+            expr += scf.read(1).decode('cp437')
 
         if peek_uint8(scf) != 200:
             scf.read(1)
@@ -1032,7 +1035,9 @@ def evaluate_new(scf):
         # _skipped = read_block(scf)
         # print(scf.tell(), _skipped)
     else:
-        raise NotImplementedError(f"Unimplemented evaluate_new: {typ} {left} {top} {width} {height}")
+        raise NotImplementedError(
+            f'Unimplemented evaluate_new: {typ} {left} {top} {width} {height}'
+        )
 
 
 def func_block(scf, ret_flag):
@@ -1065,7 +1070,6 @@ def func_block(scf, ret_flag):
     if cmd_count == 0:
         return
     assert cmd_count > 0
-
 
     last_level = ctx.get('counter', 0)
     last_cmd_count = ctx.get('cmd_count', 0)
@@ -1111,14 +1115,20 @@ def func_block(scf, ret_flag):
             _skip = scf.read(left)
             print('WARNING: Skipped', _skip)
         else:
-            raise ValueError('Block size mismatch: {} != {}', scf.tell() - block_start, size + 2)
+            raise ValueError(
+                'Block size mismatch: {} != {}',
+                scf.tell() - block_start,
+                size + 2,
+            )
     ctx['indent'] -= 1
     ctx['counter'] = last_level
     ctx['cmd_count'] = last_cmd_count
 
 
 def text_hint(ctx, textid):
-    res = ctx['texts'][textid]
+    res = ctx['texts'].get(textid)
+    if res is None:
+        return f'UNKNOWN TEXT {textid}'
     lang = ctx.get('lang')
     if lang is not None:
         return res[lang]
@@ -1134,7 +1144,13 @@ def o2_getTotTextItemPart(scf):
     textid = reads_uint16le(scf)
     var_string = read_var_index(scf)
     part = read_expr(scf)
-    printl(f'{var_string} = o2_getTotTextItemPart', textid, part, '//', text_hint(ctx, textid))
+    printl(
+        f'{var_string} = o2_getTotTextItemPart',
+        textid,
+        part,
+        '//',
+        text_hint(ctx, textid),
+    )
 
 
 def o1_assign(scf):
@@ -1146,12 +1162,13 @@ def o1_setCmdCount(scf):
     ctx['counter'] = 0
     printl('o1_setCmdCount', ctx['cmd_count'])
 
+
 def o1_loadSound(scf):
     slot = read_expr(scf)
     id = reads_uint16le(scf)
     if id == 0xFFFF:
         msg = scf.read(9).decode('ascii')
-        printl('o1_loadSound', slot,id, msg.split('\0'))
+        printl('o1_loadSound', slot, id, msg.split('\0'))
     else:
         printl('o1_loadSound', slot, id)
 
@@ -1162,7 +1179,7 @@ def o1_printText(scf):
         expr = '"'
         while peek_uint8(scf) != ord('.') and peek_uint8(scf) != 200:
             expr += scf.read(1).decode('cp437')
-        
+
         if peek_uint8(scf) != 200:
             _skip = scf.read(1)
             expr += '" '
@@ -1176,69 +1193,84 @@ def o1_printText(scf):
 
     printl('o1_printText', *params)
 
-goblin1_ops = {
-    # 0: cparam('o1_UNKNOW', reads_uint16le, reads_uint16le, reads_uint16le),
-    1: cparam('o1_setState'),
-    2: cparam('o1_setCurFrame'),
-    3: cparam('o1_setNextState'),
-    4: cparam('o1_setMultState'),
-    5: cparam('o1_setOrder'),
-    8: cparam('o1_setType'),
-    9: cparam('o1_setNoTick'),
-    10: cparam('o1_setPickable'),
-    12: cparam('o1_setXPos'),
-    13: cparam('o1_setYPos'),
-    14: cparam('o1_setDoAnim'),
-    21: cparam('o1_getState'),
-    22: cparam('o1_getCurFrame'),
-    28: cparam('o1_getType'),
-    32: cparam('o1_getObjMaxFrame'),
-    39: cparam('o1_moveGoblin0'),
-    40: cparam('o1_manipulateMap', reads_uint16le, reads_uint16le, reads_uint16le),
-    41: cparam('o1_getItem', reads_uint16le, reads_uint16le),
-    44: cparam('o1_setPassMap', reads_uint16le, reads_uint16le, reads_uint16le),
-    50: cparam('o1_setGoblinPosH', reads_uint16le, reads_uint16le, reads_uint16le),
-    150: cparam('o1_setGoblinMultState', reads_uint16le, reads_uint16le, reads_uint16le),
-    152: cparam('o1_setGoblinUnk14', reads_uint16le, reads_uint16le),
-    200: cparam('o1_setItemIdInPocket', reads_uint16le),
-    201: cparam('o1_setItemIndInPocket', reads_uint16le),
-    203: cparam('o1_getItemIndInPocket'),
-    250: cparam('o1_setGoblinPos', reads_uint16le, reads_uint16le, reads_uint16le),
-    251: cparam('o1_setGoblinState', reads_uint16le, reads_uint16le),
-    252: cparam('o1_setGoblinStateRedraw', reads_uint16le, reads_uint16le),
-    500: cparam('o1_decRelaxTime', reads_uint16le),
-    502: cparam('o1_getGoblinPosX', reads_uint16le),
-    503: cparam('o1_getGoblinPosY', reads_uint16le),
-    600: cparam('o1_clearPathExistence'),
-    601: cparam('o1_setGoblinVisible', reads_uint16le),
-    602: cparam('o1_setGoblinInvisible', reads_uint16le),
-    603: cparam('o1_getObjectIntersect', reads_uint16le, reads_uint16le),
-    604: cparam('o1_getGoblinIntersect', reads_uint16le, reads_uint16le),
-    605: cparam('o1_setItemPos', reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le),
-    1000: cparam('o1_loadObjects', reads_uint16le),
-    1001: cparam('o1_freeObjects'),
-    1002: cparam('o1_animateObjects'),
-    1003: cparam('o1_drawObjects'),
-    1004: cparam('o1_loadMap'),
-    1005: cparam('o1_moveGoblin', reads_uint16le, reads_uint16le),
-    1008: cparam('o1_loadGoblin'),
-    1009: cparam('o1_writeTreatItem', reads_uint16le, reads_uint16le, reads_uint16le),
-    1010: cparam('o1_moveGoblin0'),
-    1015: cparam('o1_setGoblinObjectsPos', reads_uint16le, reads_uint16le),
-    2005: cparam('o1_initGoblin'),
-    3000: cparam('oWeen_NOP_3000'),
-}
+
+def cjparam(name):
+    return f'(G) {name}'
 
 
-geisha_ops = {
-    0: cparam('oGeisha_gamePenetration', reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le),
-    1: cparam('oGeisha_gameDiving', reads_uint16le, reads_uint16le, reads_uint16le),
-    2: cparam('oGeisha_loadTitleMusic'),
-    3: cparam('oGeisha_playMusic'),
-    4: cparam('oGeisha_stopMusic'),
-    6: cparam('oGeisha_caress1'),
-    7: cparam('oGeisha_caress2'),
-}
+# op_by_sig = {
+#     ('oGeisha_goblinFunc', 0, 4): cjparam('oGeisha_gamePenetration'),
+#     ('oGeisha_goblinFunc', 1, 3): cjparam('oGeisha_gameDiving'),
+#     ('oGeisha_goblinFunc', 2, 0): cjparam('oGeisha_loadTitleMusic'),
+#     ('oGeisha_goblinFunc', 3, 0): cjparam('oGeisha_playMusic'),
+#     ('oGeisha_goblinFunc', 4, 0): cjparam('oGeisha_stopMusic'),
+#     ('oGeisha_goblinFunc', 6, 0): cjparam('oGeisha_caress1'),
+#     ('oGeisha_goblinFunc', 7, 0): cjparam('oGeisha_caress2'),
+#     ('o1_goblinFunc', 1, 2): cjparam('o1_setState'),
+#     ('o1_goblinFunc', 2, 2): cjparam('o1_setCurFrame'),
+#     ('o1_goblinFunc', 3, 2): cjparam('o1_setNextState'),
+#     ('o1_goblinFunc', 4, 2): cjparam('o1_setMultState'),
+#     ('o1_goblinFunc', 5, 2): cjparam('o1_setOrder'),
+#     ('o1_goblinFunc', 8, 2): cjparam('o1_setType'),
+#     ('o1_goblinFunc', 9, 2): cjparam('o1_setNoTick'),
+#     ('o1_goblinFunc', 10, 2): cjparam('o1_setPickable'),
+#     ('o1_goblinFunc', 12, 2): cjparam('o1_setXPos'),
+#     ('o1_goblinFunc', 13, 2): cjparam('o1_setYPos'),
+#     ('o1_goblinFunc', 14, 2): cjparam('o1_setDoAnim'),
+#     ('o1_goblinFunc', 21, 1): cjparam('o1_getState'),
+#     ('o1_goblinFunc', 22, 1): cjparam('o1_getCurFrame'),
+#     ('o1_goblinFunc', 28, 1): cjparam('o1_getType'),
+#     ('o1_goblinFunc', 32, 1): cjparam('o1_getObjMaxFrame'),
+#     ('o1_goblinFunc', 39, 2): cjparam('o1_moveGoblin0'),
+#     ('o1_goblinFunc', 40, 3): cjparam('o1_manipulateMap'),
+#     ('o1_goblinFunc', 41, 2): cjparam('o1_getItem'),
+#     ('o1_goblinFunc', 44, 3): cjparam('o1_setPassMap'),
+#     ('o1_goblinFunc', 50, 3): cjparam('o1_setGoblinPosH'),
+#     ('o1_goblinFunc', 150, 3): cjparam('o1_setGoblinMultState'),
+#     ('o1_goblinFunc', 152, 2): cjparam('o1_setGoblinUnk14'),
+#     ('o1_goblinFunc', 200, 1): cjparam('o1_setItemIdInPocket'),
+#     ('o1_goblinFunc', 201, 1): cjparam('o1_setItemIndInPocket'),
+#     ('o1_goblinFunc', 203, 0): cjparam('o1_getItemIndInPocket'),
+#     ('o1_goblinFunc', 250, 3): cjparam('o1_setGoblinPos'),
+#     ('o1_goblinFunc', 251, 2): cjparam('o1_setGoblinState'),
+#     ('o1_goblinFunc', 252, 2): cjparam('o1_setGoblinStateRedraw'),
+#     ('o1_goblinFunc', 500, 1): cjparam('o1_decRelaxTime'),
+#     ('o1_goblinFunc', 502, 1): cjparam('o1_getGoblinPosX'),
+#     ('o1_goblinFunc', 503, 1): cjparam('o1_getGoblinPosY'),
+#     ('o1_goblinFunc', 600, 0): cjparam('o1_clearPathExistence'),
+#     ('o1_goblinFunc', 601, 1): cjparam('o1_setGoblinVisible'),
+#     ('o1_goblinFunc', 602, 1): cjparam('o1_setGoblinInvisible'),
+#     ('o1_goblinFunc', 603, 2): cjparam('o1_getObjectIntersect'),
+#     ('o1_goblinFunc', 604, 2): cjparam('o1_getGoblinIntersect'),
+#     ('o1_goblinFunc', 605, 4): cjparam('o1_setItemPos'),
+#     ('o1_goblinFunc', 1000, 1): cjparam('o1_loadObjects'),
+#     ('o1_goblinFunc', 1001, 0): cjparam('o1_freeObjects'),
+#     ('o1_goblinFunc', 1002, 0): cjparam('o1_animateObjects'),
+#     ('o1_goblinFunc', 1003, 0): cjparam('o1_drawObjects'),
+#     ('o1_goblinFunc', 1004, 0): cjparam('o1_loadMap'),
+#     ('o1_goblinFunc', 1005, 2): cjparam('o1_moveGoblin'),
+#     ('o1_goblinFunc', 1008, 0): cjparam('o1_loadGoblin'),
+#     ('o1_goblinFunc', 1009, 3): cjparam('o1_writeTreatItem'),
+#     ('o1_goblinFunc', 1010, 0): cjparam('o1_moveGoblin0'),
+#     ('o1_goblinFunc', 1015, 2): cjparam('o1_setGoblinObjectsPos'),
+#     ('o1_goblinFunc', 2005, 0): cjparam('o1_initGoblin'),
+#     ('o1_goblinFunc', 3000, 0): cjparam('oWeen_NOP_3000'),
+#     ('o1_goblinFunc', 3, 0): cjparam('oBargon_intro2'),
+#     ('o1_goblinFunc', 4, 0): cjparam('oBargon_intro3'),
+#     ('o1_goblinFunc', 5, 0): cjparam('oBargon_intro4'),
+#     ('o1_goblinFunc', 6, 0): cjparam('oBargon_intro5'),
+#     ('o1_goblinFunc', 7, 0): cjparam('oBargon_intro6'),
+#     ('o1_goblinFunc', 8, 0): cjparam('oBargon_intro7'),
+#     ('o1_goblinFunc', 9, 0): cjparam('oBargon_intro8'),
+#     ('o1_goblinFunc', 10, 0): cjparam('oBargon_intro9'),
+#     ('o1_goblinFunc', 11, 0): cjparam('oBargon_NOP'),
+#     ('o1_goblinFunc', 1, 0): cjparam('oLittleRed_DOSInterrupt1'),
+#     ('o1_goblinFunc', 2, 0): cjparam('oLittleRed_DOSInterrupt2'),
+#     ('o1_goblinFunc', 500, 0): cjparam('oLittleRed_playProtracker'),
+#     ('o1_goblinFunc', 501, 0): cjparam('o2_stopProtracker'),
+#     ('o1_goblinFunc', 1000, 0): cjparam('oFascin_loadMod'),
+#     ('o1_goblinFunc', 12, 0): cjparam('oFascin_loadBatt3'),
+# }
 
 
 def o1_goblinFunc(scf):
@@ -1249,30 +1281,16 @@ def o1_goblinFunc(scf):
     cmd = reads_uint16le(scf)
     param_count = reads_uint16le(scf)
 
-    if 0 < cmd < 17:
-        gobParams['objIndex'] = reads_uint16le(scf)
-        gobParams['extraData'] = reads_uint16le(scf)
-    if 90 < cmd < 107:
-        gobParams['objIndex'] = reads_uint16le(scf)
-        gobParams['extraData'] = reads_uint16le(scf)
-        cmd -= 90
-    if 110 < cmd < 128:
-        gobParams['objIndex'] = reads_uint16le(scf)
-        cmd -= 90
-    elif 20 < cmd < 38:
-        gobParams['objIndex'] = reads_uint16le(scf)
+    printl('o1_goblinFunc', cmd, *(reads_uint16le(scf) for _ in range(param_count)))
+    return
 
-    if cmd < 40 and gobParams['objIndex'] == -1:
-        _skip = scf.read(param_count * 2)
-    #     scf.seek(4, io.SEEK_CUR)
-    #     # printl('o1_goblinFunc', cmd)
-    #     # return
+    # if 90 < cmd < 107 or 110 < cmd < 128:
+    #     cmd -= 90
 
-    # TODO: print function name
-    gfunc = goblin1_ops.get(cmd)
-    if gfunc is None:
-        raise ValueError(f'Missing Goblin opcode 0x{hex(cmd)[2:].upper()} = {cmd}')
-    gfunc(scf)
+    # printl(
+    #     op_by_sig.get(('o1_goblinFunc', cmd, param_count), f'(G) o1_goblinFunc {cmd}'),
+    #     *(reads_uint16le(scf) for _ in range(param_count)),
+    # )
 
 
 def o5_istrlen(scf):
@@ -1282,31 +1300,16 @@ def o5_istrlen(scf):
 
 
 def oGeisha_goblinFunc(scf):
-    
     cmd = reads_uint16le(scf)
-    _skip = scf.read(2)
+    param_count = reads_uint16le(scf)
 
-    gfunc = geisha_ops.get(cmd)
-    if gfunc is None:
-        raise ValueError(f'Missing Geisha opcode 0x{hex(cmd)[2:].upper()} = {cmd}')
-    gfunc(scf)
+    printl(
+        'oGeisha_goblinFunc', cmd, *(reads_uint16le(scf) for _ in range(param_count))
+    )
+    return
 
 
-bargon_ops = {
-    1: cparam('oBargon_intro0'),
-    2: cparam('oBargon_intro1'),
-    3: cparam('oBargon_intro2'),
-    4: cparam('oBargon_intro3'),
-    5: cparam('oBargon_intro4'),
-    6: cparam('oBargon_intro5'),
-    7: cparam('oBargon_intro6'),
-    8: cparam('oBargon_intro7'),
-    9: cparam('oBargon_intro8'),
-    10: cparam('oBargon_intro9'),
-    11: cparam('oBargon_NOP')
-}
-
-gob1_ops = { # version 49 - Gob1, Bargon, Fascination, LittleRed
+gob1_ops = {  # version 49 - Gob1, Bargon, Fascination, LittleRed
     0x00: gparam('o1_callSub'),
     0x01: gparam('o1_evaluateHotspot'),
     0x02: gparam('o1_printTotText'),
@@ -1332,25 +1335,64 @@ gob1_ops = { # version 49 - Gob1, Bargon, Fascination, LittleRed
     0x23: fparam('o1_speakerOff'),
     0x24: fparam('o1_putPixel', reads_uint16le, read_expr, read_expr, read_expr),
     0x25: gparam('o1_goblinFunc'),
-    0x26: fparam('o1_createSprite', reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le),
+    0x26: fparam(
+        'o1_createSprite',
+        reads_uint16le,
+        reads_uint16le,
+        reads_uint16le,
+        reads_uint16le,
+    ),
     0x27: fparam('o1_freeSprite', reads_uint16le),
     0x30: fparam('o1_returnTo'),
-    0x31: fparam('o1_loadSpriteContent', reads_uint16le, reads_uint16le, reads_uint16le),
-    0x32: fparam('o1_copySprite', reads_uint16le, reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le), # check diff in Fascination
-    0x33: fparam('o1_fillRect', reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr),
-    0x34: fparam('o1_drawLine', reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr),
+    0x31: fparam(
+        'o1_loadSpriteContent', reads_uint16le, reads_uint16le, reads_uint16le
+    ),
+    0x32: fparam(
+        'o1_copySprite',
+        reads_uint16le,
+        reads_uint16le,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        reads_uint16le,
+    ),  # check diff in Fascination
+    0x33: fparam(
+        'o1_fillRect',
+        reads_uint16le,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+    ),
+    0x34: fparam(
+        'o1_drawLine',
+        reads_uint16le,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+    ),
     0x35: fparam('o1_strToLong', read_var_index, read_var_index),
-    0x36: xparam('o1_invalidate'),
+    0x36: fparam(
+        'o1_invalidate', reads_uint16le, read_expr, read_expr, read_expr, read_expr
+    ),
     0x37: fparam('o1_setBackDelta', read_expr, read_expr),
     0x38: fparam('o1_playSound', read_expr, read_expr, read_expr),
     0x39: fparam('o1_stopSound', read_expr),
     0x3A: gparam('o1_loadSound'),
     0x3B: fparam('o1_freeSoundSlot', read_expr),
     0x3C: fparam('o1_waitEndPlay'),
-    0x3D: fparam('o1_playComposition', read_var_index, read_expr), # check diff in little red
+    0x3D: fparam(
+        'o1_playComposition', read_var_index, read_expr
+    ),  # check diff in little red
     0x3E: fparam('o1_getFreeMem', read_var_index, read_var_index),
     0x3F: fparam('o1_checkData', read_expr, read_var_index),
-    0x41: xparam('o1_cleanupStr', read_var_index),
+    0x41: fparam('o1_cleanupStr', read_var_index),
     0x42: fparam('o1_insertStr', read_var_index, read_expr),
     0x43: fparam('o1_cutStr', read_var_index, read_expr, read_expr),
     0x44: fparam('o1_strstr', read_var_index, read_expr, read_var_index),
@@ -1368,7 +1410,7 @@ gob1_ops = { # version 49 - Gob1, Bargon, Fascination, LittleRed
 }
 
 
-gobGeisha_ops = { # version 48 - Geisha
+gobGeisha_ops = {  # version 48 - Geisha
     **gob1_ops,
     # 0x03: xparam('oGeisha_loadCursor'),
     # 0x12: xparam('oGeisha_loadTot'),
@@ -1380,12 +1422,21 @@ gobGeisha_ops = { # version 48 - Geisha
 }
 
 
-gob2_ops = { # Version 50 - Gob2, Ween
+gob2_ops = {  # Version 50 - Gob2, Ween
     **gob1_ops,
     0x09: gparam('o2_assign'),
     0x11: gparam('o2_printText'),
     0x17: fparam('o2_animPalInit', reads_uint16le, read_expr, read_expr),
-    0x18: fparam('o2_addHotspot', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le),
+    0x18: fparam(
+        'o2_addHotspot',
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        reads_uint16le,
+    ),
     0x19: fparam('o2_removeHotspot', read_expr),
     0x1A: gparam('o2_getTotTextItemPart'),
     0x25: gparam('o2_goblinFunc'),
@@ -1403,13 +1454,22 @@ gob3_ops = {  # version 51 - Gob3, Adibou1, Inca2, Woodruff, Dynasty
     0x22: fparam('o3_speakerOn', read_expr),
     0x23: fparam('o3_speakerOff'),
     0x25: gparam('oInca2_goblinFunc'),
-    0x32: fparam('o3_copySprite', reads_uint16le, reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le),
+    0x32: fparam(
+        'o3_copySprite',
+        reads_uint16le,
+        reads_uint16le,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        reads_uint16le,
+    ),
 }
-
 
 gob5_ops = {
     **gob3_ops,
-    0x25: gparam('oInca2_goblinFunc'),
     0x45: gparam('o5_istrlen'),
 }
 
@@ -1418,16 +1478,52 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0x03: gparam('o6_loadCursor'),
     0x09: gparam('o6_assign'),
     0x0B: gparam('oPlaytoons_printText'),
-    0x1B: fparam('oPlaytoons_F_1B', read_expr, read_expr, read_expr, read_expr, read_expr),
-    0x24: xparam('oPlaytoons_putPixel'),
+    0x1B: fparam(
+        'oPlaytoons_F_1B', read_expr, read_expr, read_expr, read_expr, read_expr
+    ),
+    # 0x24: fparam('oPlaytoons_putPixel', reads_uint16le, read_expr, read_expr, read_expr),
     0x19: fparam('o6_removeHotspot', read_expr),
     0x26: gparam('o6_createSprite'),
     0x27: gparam('oPlaytoons_freeSprite'),
-    0x32: fparam('o1_copySprite', reads_uint16le, reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le),
-    0x33: fparam('o6_fillRect', reads_uint16le, read_expr, read_expr, read_expr, read_expr, read_expr),
+    0x32: gparam('o1_copySprite'),
+    0x33: fparam(
+        'o6_fillRect',
+        reads_uint16le,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+        read_expr,
+    ),
     0x3F: fparam('oPlaytoons_checkData', read_expr, read_var_index),
     0x4D: fparam('o7_readData', read_expr, read_var_index, read_expr, read_expr),
 }
+
+
+def o1_copySprite(scf):
+    fval = peek_uint8(scf, 1)
+    if fval == 0:
+        fval = reads_uint16le(scf)
+    else:
+        fval = read_expr(scf)
+    sval = peek_uint8(scf, 1)
+    if sval == 0:
+        sval = reads_uint16le(scf)
+    else:
+        sval = read_expr(scf)
+
+    printl(
+        'o1_copySprite',
+        fval,
+        sval,
+        read_expr(scf),
+        read_expr(scf),
+        read_expr(scf),
+        read_expr(scf),
+        read_expr(scf),
+        read_expr(scf),
+        reads_uint16le(scf),
+    )
 
 
 named_variables = {
@@ -1488,7 +1584,6 @@ def printl(*msgs):
 def read_ext_item(items, index, ext_data, com_data):
     offset, size, width, height, packed = items[index]
     if offset < 0:
-        print('NEGATIVE OFFSET')
         if com_data is None:
             raise ValueError('No commun data')
         # TODO: handle different COMMUN.EX file for different TOTs
@@ -1521,7 +1616,9 @@ def menu():
         default=['*.TOT'],
         help='Script to decompile',
     )
-    parser.add_argument('version', help='Script version to decompile', choices=optables.keys())
+    parser.add_argument(
+        'version', help='Script version to decompile', choices=optables.keys()
+    )
     parser.add_argument(
         '--lang',
         '-l',
@@ -1540,23 +1637,24 @@ def menu():
         help='Only decompile exported functions',
     )
 
-
     return parser.parse_args()
 
 
 optables = {
-    48: gobGeisha_ops, # Script_Geisha
-    49: gob1_ops, # Script_v1, Script_LittleRed, Script_Bargon, Script_Fascin
-    50: gob2_ops, # Script_v2
-    51: gob3_ops, # Script_v3, Script_v4, Script_v5
-    52: gob6_ops, # Script_v6, Script_v7
+    48: gobGeisha_ops,  # Script_Geisha
+    49: gob1_ops,  # Script_v1, Script_LittleRed, Script_Bargon, Script_Fascin
+    50: gob2_ops,  # Script_v2
+    51: gob3_ops,  # Script_v3, Script_v4, Script_v5
+    52: gob6_ops,  # Script_v6, Script_v7
 }
 
 
 def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
     # Check if the provided directory is exactly 'extracted/'
     if os.path.abspath(gamedir) == os.path.abspath('extracted/'):
-        print("Please provide a valid directory path which use the STK extension.\nLike extracted/INTRO.STK\n")
+        print(
+            'Please provide a valid directory path which use the STK extension.\nLike extracted/INTRO.STK\n'
+        )
         return
     game = archive.open_game(gamedir)
 
@@ -1581,15 +1679,14 @@ def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
     # ctx['optable'] = optables[optable]
 
     script_dir = Path('scripts')
-    os.makedirs(script_dir, exist_ok=True)
+    os.makedirs(script_dir / gamedir.name, exist_ok=True)
 
     for pattern, entry in game.search(scripts):
-
         print(f'Decompiling {entry.name}...')
         texts_data = None
         with entry.open('rb') as tot_file:
             tot_data = tot_file.read()
-        
+
         with io.BytesIO(tot_data) as tot_stream:
             script, functions, texts_data, res_data, ifn, efn = read_tot(tot_stream)
 
@@ -1600,6 +1697,7 @@ def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
                 ctx['ext_items'] = list(read_ext_table(ext_file))
                 ctx['ext_data'] = ext_file.read()
 
+        # ctx['texts'] = {}
         ctx['texts'] = dict(
             enumerate(
                 {lang: decrypt(decoders, line, lang) for lang in line}
@@ -1613,7 +1711,7 @@ def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
         if prever is not None and prever != tot_file[41]:
             print(f'Warning: Script version mismatch: {prever} ({tot_file[41]})')
         ctx['ver_script'] = tot_file[41]
-        print('Script version', ctx['ver_script'], tot_file[0x3d])
+        print('Script version', ctx['ver_script'], tot_file[0x3D])
 
         ctx['optable'] = optables[ctx['ver_script']]
 
@@ -1637,7 +1735,7 @@ def main(gamedir, rebuild, scripts, lang=None, keys=False, exported=False):
             while scfa.tell() + 1 < len(script):
                 yield
 
-        script_out = script_dir / f'{entry.name}.txt'
+        script_out = script_dir / gamedir.name / f'{entry.name}.txt'
         with (script_out).open('w', encoding='utf-8') as outstream:
             with redirect_stdout(outstream):
                 print(ctx['functions'])
