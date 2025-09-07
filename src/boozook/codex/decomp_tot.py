@@ -1479,7 +1479,7 @@ gob6_ops = {  # version 52 - Playtoons, Adi4, Adibou2, Urban
     0x09: gparam('o6_assign'),
     0x0B: gparam('oPlaytoons_printText'),
     0x1B: fparam(
-        'oPlaytoons_F_1B', read_expr, read_expr, read_expr, read_expr, read_expr
+        'oPlaytoons_createButton', read_expr, read_expr, read_expr, read_expr, read_expr
     ),
     # 0x24: fparam('oPlaytoons_putPixel', reads_uint16le, read_expr, read_expr, read_expr),
     0x19: fparam('o6_removeHotspot', read_expr),
