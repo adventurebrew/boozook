@@ -814,6 +814,8 @@ video_ops = {
     ),
     0xA2: vparam('o7_setINIValue', read_expr, read_expr, read_expr, read_expr),
     0xA4: vparam('o7_loadIFFPalette', read_expr, read_expr, read_expr),
+    0xB3: vparam('o7_openHtmlFile', read_expr),
+    0xBF: vparam('o7_closeHtmlFile', read_expr),
     0xC4: vparam('o7_openTranslationDB', read_expr, read_expr),
     0xC5: vparam('o7_closeTranslationDB', read_expr),
     0xC6: vparam(
