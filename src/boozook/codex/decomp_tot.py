@@ -788,7 +788,7 @@ video_ops = {
     0x86: vparam('o2_closeItk'),
     0x87: vparam('o2_setImdFrontSurf'),
     0x88: vparam('o2_resetImdFrontSurf'),
-    0x89: vparam('o7_setActiveCD', read_expr, read_expr),
+    0x89: vparam('o7_setActiveCD', read_expr, read_expr, read_var_index),
     0x8A: vparam('o7_findFile', read_expr, read_var_index, read_var_index),
     0x8B: vparam('o7_findNextFile', read_var_index, read_var_index),
     0x8C: vparam('o7_getSystemProperty', read_expr, read_var_index),
