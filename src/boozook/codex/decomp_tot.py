@@ -660,17 +660,8 @@ video_ops = {
     ),
     0x04: vparam('oFascin_closeWin', read_expr),
     0x06: vparam('oFascin_openWin', read_expr, read_var_index),
-    0x07: vparam(
-        'o1_initCursor',
-        read_var_index,
-        read_var_index,
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-    ),
-    0x08: vparam(
-        'o1_initCursorAnim', read_expr, reads_uint16le, reads_uint16le, reads_uint16le
-    ),
+    0x07: vparam('o1_initCursor', read_var_index, read_var_index, reads_uint16le, reads_uint16le, reads_uint16le),
+    0x08: vparam('o1_initCursorAnim', read_expr, reads_uint16le, reads_uint16le, reads_uint16le),
     0x09: vparam('o1_clearCursorAnim', read_expr),
     0x0A: vparam('o2_setRenderFlags', read_expr),
     0x0B: vparam('oFascin_setWinFlags', read_expr),
@@ -678,47 +669,14 @@ video_ops = {
     0x0D: vparam('o7_setCursorToLoadFromExec', read_expr, read_expr),
     0x10: lvparam('o1_loadAnim', video_o1_loadAnim),
     0x11: vparam('o1_freeAnim', read_expr),
-    0x12: vparam(
-        'o1_updateAnim',
-        read_expr,
-        read_expr,
-        read_expr,
-        read_expr,
-        read_expr,
-        reads_uint16le,
-    ),
+    0x12: vparam('o1_updateAnim', read_expr, read_expr, read_expr, read_expr, read_expr, reads_uint16le),
     0x13: vparam('o2_multSub', read_expr, read_expr, read_expr, read_expr, read_expr),
-    0x14: vparam(
-        'o2_initMult',
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-        read_var_index,
-        read_var_index,
-        read_var_index,
-    ),
+    0x14: vparam('o2_initMult', reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le, read_var_index, read_var_index, read_var_index),
     0x15: vparam('o1_freeMult'),
     0x16: vparam('o1_animate'),
     0x17: lvparam('o2_loadMultObject', video_o2_loadMultObject),
-    0x18: vparam(
-        'o1_getAnimLayerInfo',
-        read_expr,
-        read_expr,
-        read_var_index,
-        read_var_index,
-        read_var_index,
-        read_var_index,
-    ),
-    0x19: vparam(
-        'o1_getObjAnimSize',
-        read_expr,
-        read_var_index,
-        read_var_index,
-        read_var_index,
-        read_var_index,
-    ),
+    0x18: vparam('o1_getAnimLayerInfo', read_expr, read_expr, read_var_index, read_var_index, read_var_index, read_var_index),
+    0x19: vparam('o1_getObjAnimSize', read_expr, read_var_index, read_var_index, read_var_index, read_var_index),
     0x1A: lvparam('o1_loadStatic', video_o1_loadStatic),
     0x1B: vparam('o1_freeStatic', read_expr),
     0x1C: vparam('o2_renderStatic', read_expr, read_expr),
@@ -729,14 +687,7 @@ video_ops = {
     0x23: vparam('o2_readLIC', read_expr),
     0x24: vparam('o2_freeLIC'),
     0x25: vparam('o2_getCDTrackPos', read_var_index, read_var_index),
-    0x30: vparam(
-        'o2_loadFontToSprite',
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-        reads_uint16le,
-    ),
+    0x30: vparam('o2_loadFontToSprite', reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le, reads_uint16le),
     0x31: vparam('o1_freeFontToSprite', reads_uint16le),
     0x40: vparam('o2_totSub', video_o2_totSub),
     0x41: vparam('o2_switchTotSub', reads_uint16le, reads_uint16le),
@@ -759,9 +710,7 @@ video_ops = {
     0x60: vparam('o7_copyFile', read_expr, read_expr),
     0x61: vparam('o5_deleteFile', read_expr),
     0x80: vparam('o2_initScreen', reads_uint8, reads_uint8, read_expr, read_expr),
-    0x81: vparam(
-        'o2_scroll', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr
-    ),
+    0x81: vparam('o2_scroll', read_expr, read_expr, read_expr, read_expr, read_expr, read_expr),
     0x82: vparam('o2_setScrollOffset', read_expr, read_expr),
     0x83: vparam(
         'o2_playImd',
@@ -809,9 +758,7 @@ video_ops = {
     ),
     0x93: vparam('o7_setVolume', read_expr),
     0xA0: vparam('o7_draw0xA0', read_expr, read_var_index, read_expr),
-    0xA1: vparam(
-        'o7_getINIValue', read_expr, read_expr, read_expr, read_expr, read_var_index
-    ),
+    0xA1: vparam('o7_getINIValue', read_expr, read_expr, read_expr, read_expr, read_var_index),
     0xA2: vparam('o7_setINIValue', read_expr, read_expr, read_expr, read_expr),
     0xA4: vparam('o7_loadIFFPalette', read_expr, read_expr, read_expr),
     0xB3: vparam('o7_openHtmlFile', read_expr),
@@ -820,11 +767,8 @@ video_ops = {
     0xC1: vparam('o7_nextKeywordHtmlFile', read_expr, read_expr, read_expr, read_var_index),
     0xC4: vparam('o7_openTranslationDB', read_expr, read_expr),
     0xC5: vparam('o7_closeTranslationDB', read_expr),
-    0xC6: vparam(
-        'o7_getDBString', read_expr, read_expr, read_expr, read_expr, read_var_index
-    ),
+    0xC6: vparam('o7_getDBString', read_expr, read_expr, read_expr, read_expr, read_var_index),
 }
-
 
 def o1_drawOperations(scf):
     vop = ord(scf.read(1))
@@ -833,13 +777,11 @@ def o1_drawOperations(scf):
         raise ValueError(f'Missing Video opcode 0x{hex(vop)[2:].upper()} = {vop}')
     vfunc(scf)
 
-
 def o2_goblinFunc(scf):
     cmd = reads_uint16le(scf)
     param_count = reads_uint16le(scf)
     printl('o2_goblinFunc', cmd, *(reads_uint16le(scf) for _ in range(param_count)))
     return
-
 
 def oInca2_goblinFunc(scf):
     cmd = reads_uint16le(scf)
