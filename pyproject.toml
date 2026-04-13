@@ -9,7 +9,7 @@ readme = "README.md"
 python = ">=3.12"
 pakal = {git = "https://github.com/adventurebrew/pakal.git"}
 numpy = "^2.2.6"
-pillow = "^11.2.1"
+pillow = ">=11.2.1,<13.0.0"
 prompt-toolkit = "^3.0.51"
 
 
