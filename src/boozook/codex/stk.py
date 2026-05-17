@@ -149,7 +149,10 @@ def unpack(stream: IO[bytes], offset: int, size: int, compression: int) -> IO[by
 class STKArchive(BaseArchive[STKFileEntry | STK21FileEntry]):
     def _create_index(self) -> 'ArchiveIndex[STKFileEntry | STK21FileEntry]':
         header = self._stream.read(6)
-        if header == b'STK2.1':
+        if header == b'STK2.0':
+            self.version = 2.0
+            return dict(extract_stk21(self._stream))
+        elif header == b'STK2.1':
             self.version = 2.1
             return dict(extract_stk21(self._stream))
         self._stream.seek(0, io.SEEK_SET)

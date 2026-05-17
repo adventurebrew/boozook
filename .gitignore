@@ -120,3 +120,6 @@ texts/
 *.stk
 *.ltk
 *.jtk
+
+# General stuff
+*.zip
